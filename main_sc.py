@@ -137,7 +137,7 @@ for seed in SEED:
     print('col-testing:', aggregated_metrics)
     if best_flag:
         best_pred_test = preds
-        fname = 'predictions/'+pert_data.dataset_name+'_'+args.method+'_seed='+str(seed)+'_lr='+str(lr)+'_decay='+str(decay)+'_hidden='+str(args.hidden_size)+'.npz'
+        fname = 'predictions/'+pert_data.dataset_name+'_SC_'+args.method+'_seed='+str(seed)+'_lr='+str(lr)+'_decay='+str(decay)+'_hidden='+str(args.hidden_size)+'.npz'
         np.savez(fname, epoch=epoch, best_pearson_val=best_pearson_val, best_pred_val=best_pred_val, best_pred_test=best_pred_test, val_perturbs=val_perturbs, test_perturbs=test_perturbs)
     
     OE_preds = torch.from_numpy(pred2OE(preds.numpy(), OE_signatures, column_names, gene2idx))
