@@ -1,7 +1,7 @@
 # GAR-M
 Predict Perturb-Seq with GAR-M (Gradient Aligned Regression with Multihead)
 <p align="center">
-  <img src="figures/GAR-MPH.jpg" width="400" title="Sine">
+  <img src="figures/GAR-MPH.jpg" width="600" title="Sine">
 </p>
 ## Usage:
 
