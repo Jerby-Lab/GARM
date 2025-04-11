@@ -88,9 +88,15 @@ def aggregated_eval_col(pred, Y):
             p += torch.rand(p.shape)*1e-10
             noise_ids.append(i)
         mse = torch.nn.functional.mse_loss(p, Y[:,i]).detach().numpy()
-        auroc_up = roc_auc_score(Y[:,i].numpy()>up_thres[i], pred[:,i].detach().numpy())
+        try:
+            auroc_up = roc_auc_score(Y[:,i].numpy()>up_thres[i], pred[:,i].detach().numpy())
+        except:
+            auroc_up = np.nan
         auprc_up = average_precision_score(Y[:,i].numpy()>up_thres[i], pred[:,i].detach().numpy())
-        auroc_down = roc_auc_score(Y[:,i].numpy()<down_thres[i], -pred[:,i].detach().numpy())
+        try:
+            auroc_down = roc_auc_score(Y[:,i].numpy()<down_thres[i], -pred[:,i].detach().numpy())
+        except:
+            auroc_down = np.nan
         auprc_down = average_precision_score(Y[:,i].numpy()<down_thres[i], -pred[:,i].detach().numpy())
         pearson = pearsonr(p.numpy(), Y[:,i].numpy())[0]
         spearman = spearmanr(p.numpy(), Y[:,i].numpy()).statistic
