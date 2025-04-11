@@ -1,8 +1,9 @@
 # GAR-M
 Predict Perturb-Seq with GAR-M (Gradient Aligned Regression with Multihead)
 <p align="center">
-  <img src="figures/GAR-MPH.jpg" width="600" title="Sine">
+  <img src="figures/GAR-MPH.jpg" width="700" title="Sine">
 </p>
+
 ## Usage:
 
 Run on the curated datasets ['norman', 'adamson', 'dixit', 'replogle_k562_essential', 'replogle_rpe1_essential'] from GEARS paper.
