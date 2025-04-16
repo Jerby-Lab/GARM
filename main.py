@@ -19,11 +19,9 @@ parser.add_argument('--decay', default=5e-4, type=float, help='weight decay for 
 parser.add_argument('--hidden_size', default=128, type=int, help='GNN hidden size')
 
 args = parser.parse_args()
-# if args.method in ['GEARS']:
-#     os.environ["CUDA_VISIBLE_DEVICES"] = "1"
-
-if args.dataset in ['jurkat', 'hepg2']:
+if args.method in ['GEARS']:
     os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+
 SEED = [1,2,3,4,5]
 lr = args.lr
 decay = args.decay
