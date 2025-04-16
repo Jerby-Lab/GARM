@@ -63,7 +63,6 @@ class GEARS:
         self.config = None
         
         self.dataloader = pert_data.dataloader
-        self.adata = pert_data.adata
         self.node_map = pert_data.node_map
         self.node_map_pert = pert_data.node_map_pert
         self.data_path = pert_data.data_path
@@ -71,17 +70,25 @@ class GEARS:
         self.split = pert_data.split
         self.seed = pert_data.seed
         self.train_gene_set_size = pert_data.train_gene_set_size
-        self.set2conditions = pert_data.set2conditions
-        self.subgroup = pert_data.subgroup
         self.gene_list = pert_data.gene_names.values.tolist()
         self.pert_list = pert_data.pert_names.tolist()
         self.num_genes = len(self.gene_list)
         self.num_perts = len(self.pert_list)
         self.default_pert_graph = pert_data.default_pert_graph
-        self.ctrl_adata = pert_data.ctrl_adata
-        self.ctrl_mean = torch.from_numpy(pert_data.ctrl_mean).view(-1).to(self.device)
         self.saved_pred = {}
         self.saved_logvar_sum = {}
+        try:
+            self.adata = None
+            self.set2conditions = None
+            self.train_Y = pert_data.train_Y
+            self.ctrl_mean = None
+            self.ctrl_adata = None
+        except:
+            self.adata = pert_data.adata
+            self.set2conditions = pert_data.set2conditions
+            self.train_Y = None
+            self.ctrl_mean = torch.from_numpy(pert_data.ctrl_mean).view(-1).to(self.device)
+            self.ctrl_adata = pert_data.ctrl_adata
 
         pert_full_id2pert = dict(self.adata.obs[['condition_name', 'condition']].values)
         self.dict_filter = {pert_full_id2pert[i]: j for i, j in
@@ -206,7 +213,9 @@ class GEARS:
                                                data_name=self.dataset_name,
                                                split=self.split, seed=self.seed,
                                                train_gene_set_size=self.train_gene_set_size,
-                                               set2conditions=self.set2conditions)
+                                               set2conditions=self.set2conditions,
+                                               train_Y=self.train_Y,
+                                               gene_list=self.gene_list)
 
             sim_network = GeneSimNetwork(edge_list, self.gene_list, node_map = self.node_map)
             self.config['G_coexpress'] = sim_network.edge_index
@@ -435,6 +444,7 @@ class GEARS:
 
 
 
+
 class GEARS_GAR_M:
     """
     GEARS base model class
@@ -511,9 +521,7 @@ class GEARS_GAR_M:
             self.train_Y = None
             self.ctrl_mean = torch.from_numpy(pert_data.ctrl_mean).to(self.device)
             self.ctrl_adata = pert_data.ctrl_adata
-        
-        self.dict_filter = None
-        
+                
 
     def tunable_parameters(self):
         """
@@ -535,7 +543,6 @@ class GEARS_GAR_M:
                 'coexpress_threshold': 'pearson correlation threshold when constructing coexpression graph, default 0.4',
                 'uncertainty': 'whether or not to turn on uncertainty mode, default False',
                 'uncertainty_reg': 'regularization term to balance uncertainty loss and prediction loss, default 1',
-                'direction_lambda': 'regularization term to balance direction loss and prediction loss, default 1'
                }
     
     def model_initialize(self, hidden_size = 64,
@@ -547,7 +554,6 @@ class GEARS_GAR_M:
                          coexpress_threshold = 0.4,
                          uncertainty = False, 
                          uncertainty_reg = 1,
-                         direction_lambda = 1e-1,
                          lr = 1e-3,
                          weight_decay = 5e-4,
                          G_go = None,
@@ -579,8 +585,6 @@ class GEARS_GAR_M:
             whether or not to turn on uncertainty mode, default False
         uncertainty_reg: float
             regularization term to balance uncertainty loss and prediction loss, default 1
-        direction_lambda: float
-            regularization term to balance direction loss and prediction loss, default 1
         G_go: scipy.sparse.csr_matrix
             GO graph, default None
         G_go_weight: scipy.sparse.csr_matrix
@@ -606,7 +610,6 @@ class GEARS_GAR_M:
                        'coexpress_threshold': coexpress_threshold,
                        'uncertainty' : uncertainty, 
                        'uncertainty_reg' : uncertainty_reg,
-                       'direction_lambda' : direction_lambda,
                        'G_go': G_go,
                        'G_go_weight': G_go_weight,
                        'G_coexpress': G_coexpress,
@@ -833,9 +836,6 @@ class GEARS_GAR_M:
                 loss.backward()
                 nn.utils.clip_grad_value_(self.model.parameters(), clip_value=1.0)
                 optimizer.step()
-
-                #if self.wandb:
-                #    self.wandb.log({'training_loss': loss.item()})
                 tr_loss.append(loss.item())
             if epoch % 20 == 0:
                 log = "Epoch {} Step {} Train Loss: {:.4f}" 

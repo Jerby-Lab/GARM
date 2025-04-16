@@ -767,12 +767,12 @@ class PertData:
         if not os.path.exists(pyg_path):
             os.mkdir(pyg_path)
         dataset_fname = os.path.join(pyg_path, 'cell_graphs.pkl')
+        self.avg_sc = avg_sc
         if self.avg_sc:
             dataset_fname = dataset_fname.replace('_graphs.pkl', '_avg_sc_graphs.pkl')
         self.ctrl_adata = self.adata[self.adata.obs['condition'] == 'ctrl']
         self.gene_names = self.adata.var.gene_name
         self.ctrl_mean = self.ctrl_adata.X.mean(axis=0)
-        self.avg_sc = avg_sc
         if os.path.isfile(dataset_fname):
             print_sys("Local copy of pyg dataset is detected. Loading...")
             self.dataset_processed = pickle.load(open(dataset_fname, "rb"))        

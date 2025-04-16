@@ -37,6 +37,8 @@ def aggregated_eval_row(pred, Y, perturbs):
     up_thres = np.quantile(Y,0.8,axis=-1)
     down_thres = np.quantile(Y,0.2,axis=-1)
     for i in range(Y.shape[0]):
+        if perturbs[i] in ['ctrl', 'non-targeting']:
+            continue
         mse_dict[perturbs[i]] = torch.nn.functional.mse_loss(pred[i,:], Y[i,:]).detach().numpy()
         pearson_dict[perturbs[i]] = pearsonr(pred[i,:].detach().numpy(), Y[i,:].numpy())[0]
         spearman_dict[perturbs[i]] = spearmanr(pred[i,:].detach().numpy(), Y[i,:].numpy()).statistic
