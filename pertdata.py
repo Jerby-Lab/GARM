@@ -555,7 +555,7 @@ class PertData_Essential:
                 # Store list of genes that are most differentially expressed for testing
                 ctrl_samples = self.ctrl_adata[np.random.randint(0,len(self.ctrl_adata),N), :]
                 for i in range(N):
-                    Xs.append(ctrl_samples[[i]])
+                    Xs.append(ctrl_samples.X[[i]])
                     ys.append(adata_.X[[i]])
     
             # When considering a control perturbation
@@ -1148,7 +1148,7 @@ class PertData:
                 # Store list of genes that are most differentially expressed for testing
                 ctrl_samples = self.ctrl_adata[np.random.randint(0,len(self.ctrl_adata),N), :]
                 for i in range(N):
-                    Xs.append(ctrl_samples[[i]])
+                    Xs.append(ctrl_samples.X[[i]])
                     ys.append(adata_.X[[i]])
     
             # When considering a control perturbation
