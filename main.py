@@ -19,7 +19,7 @@ parser.add_argument('--decay', default=5e-4, type=float, help='weight decay for 
 parser.add_argument('--hidden_size', default=128, type=int, help='GNN hidden size')
 
 args = parser.parse_args()
-if args.method in ['GEARS']:
+if args.dataset in ['jurkat', 'hepg2']:
     os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 SEED = [1,2,3,4,5]
@@ -36,17 +36,8 @@ gene2idx = get_gene_idx(pert_data)
 
 OE_signatures = np.load('/oak/stanford/groups/ljerby/dzhu/Data/PertrubSeq_OE_signatures.npz', allow_pickle=True)
 OE_signatures = OE_signatures['arr_0'].item()
-OE_truth = []
-row_names = []
 column_names = np.load('/oak/stanford/groups/ljerby/dzhu/Data/PertrubSeq_GeneSetOE_Replogle2022_K562_column_names.npy')
-for k in pert_data.dataset_processed.keys():
-    i = pert_data.dataset_processed[k][0]
-    row_names.append(i.pert)
-    OE_truth.append(i.y)
-OE_truth = torch.cat(OE_truth, dim=0)
-OE_truth = pred2OE(OE_truth.numpy(), OE_signatures, column_names, gene2idx)
-pert2OEidx = {row_names[i]:i for i in range(len(row_names))}
-OE_truth_ctrl = pred2OE(np.array(pert_data.ctrl_mean), OE_signatures, column_names, gene2idx)
+
 
 
 for seed in SEED:

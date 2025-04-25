@@ -124,20 +124,13 @@ class GEARS_Model_GAR_M(torch.nn.Module):
         """
         Forward pass of the model
         """
-        try:
-            x, pert_idx = data.x, data.pert_idx
-        except:
-            x, pert_idx = data['x'], data['pert_idx']
+        x, pert_idx = data.x, data.pert_idx
         if self.no_perturb:
             out = x.reshape(-1,1)
             out = torch.split(torch.flatten(out), self.num_genes)           
             return torch.stack(out)
         else:
-            try:
-                num_graphs = len(data.batch.unique())
-            except:
-                num_graphs = len(data['pert'])
-
+            num_graphs = len(data.batch.unique())
             ## get base gene embeddings
             emb = self.gene_emb(torch.LongTensor(list(range(self.num_genes))).repeat(num_graphs, ).to(self.args['device']))        
             emb = self.bn_emb(emb)
@@ -259,6 +252,199 @@ class GEARS_Model_GAR_M(torch.nn.Module):
         pred_full = pred_row*0.5 + pred_col*0.5
         #return (pred_row + pred_col)/2# pred_col
         return pred_full, pred_row, pred_col
+
+
+
+
+class GEARS_Model_GAR_M_v2(torch.nn.Module):
+    """
+    GEARS model
+
+    """
+
+    def __init__(self, args):
+        """
+        :param args: arguments dictionary
+        """
+
+        super(GEARS_Model_GAR_M_v2, self).__init__()
+        self.args = args       
+        self.num_genes = args['num_genes']
+        self.num_perts = args['num_perts']
+        hidden_size = args['hidden_size']
+        self.uncertainty = args['uncertainty']
+        self.num_layers = args['num_go_gnn_layers']
+        self.indv_out_hidden_size = args['decoder_hidden_size']
+        self.num_layers_gene_pos = args['num_gene_gnn_layers']
+        self.no_perturb = args['no_perturb']
+        self.pert_emb_lambda = 0.2
+        self.D = self.num_genes
+        self.hidden_size = hidden_size
+        # perturbation positional embedding added only to the perturbed genes
+        self.pert_w = nn.Linear(1, hidden_size)
+           
+        # gene/globel perturbation embedding dictionary lookup            
+        self.gene_emb = nn.Embedding(self.num_genes, hidden_size, max_norm=True)
+        self.pert_emb = nn.Embedding(self.num_perts, hidden_size, max_norm=True)
+        
+        # transformation layer
+        self.emb_trans = nn.ReLU()
+        self.pert_base_trans = nn.ReLU()
+        self.transform = nn.ReLU()
+        self.emb_trans_v2 = MLP([hidden_size, hidden_size, hidden_size], last_layer_act='ReLU')
+        self.pert_fuse = MLP([hidden_size, hidden_size, hidden_size], last_layer_act='ReLU')
+        
+        # gene co-expression GNN
+        self.G_coexpress = args['G_coexpress'].to(args['device'])
+        self.G_coexpress_weight = args['G_coexpress_weight'].to(args['device'])
+
+        self.emb_pos = nn.Embedding(self.num_genes, hidden_size, max_norm=True)
+        self.layers_emb_pos = torch.nn.ModuleList()
+        for i in range(1, self.num_layers_gene_pos + 1):
+            self.layers_emb_pos.append(SGConv(hidden_size, hidden_size, 1))
+        
+        ### perturbation gene ontology GNN
+        self.G_sim = args['G_go'].to(args['device'])
+        self.G_sim_weight = args['G_go_weight'].to(args['device'])
+
+        self.sim_layers = torch.nn.ModuleList()
+        for i in range(1, self.num_layers + 1):
+            self.sim_layers.append(SGConv(hidden_size, hidden_size, 1))
+        
+        # decoder shared MLP
+        self.recovery_w = MLP([hidden_size, hidden_size*2, hidden_size], last_layer_act='linear')
+        
+        # gene specific decoder
+        self.indv_w1 = nn.Parameter(torch.rand(self.D,
+                                               hidden_size))
+        self.indv_b1 = nn.Parameter(torch.rand(self.D))
+        self.act = nn.ReLU()
+
+        
+        # Cross gene MLP
+        self.cross_gene_state = MLP([self.D, hidden_size,
+                                     hidden_size])
+        self.fcp = []
+        for i in range(5):
+            tmp = MLP([hidden_size, hidden_size, hidden_size], last_layer_act='ReLU').to(args['device'])
+            self.fcp.append(tmp)
+
+        self.fcg = []
+        for i in range(5):
+            tmp = MLP([hidden_size, hidden_size, hidden_size], last_layer_act='ReLU').to(args['device'])
+            self.fcg.append(tmp)
+
+        
+        # batchnorms
+        self.bn_emb = nn.BatchNorm1d(hidden_size)
+        self.bn_pert_base = nn.BatchNorm1d(hidden_size)
+        self.bn_pert_base_trans = nn.BatchNorm1d(hidden_size)
+        
+        # uncertainty mode
+        if self.uncertainty:
+            self.uncertainty_w = MLP([hidden_size, hidden_size*2, hidden_size, 1], last_layer_act='linear')
+        #self.combine_w = nn.Parameter(torch.rand(2,self.D))
+        #self.combine_w = nn.Parameter(torch.rand(2))
+        
+    def forward(self, data):
+        """
+        Forward pass of the model
+        """
+        x, pert_idx = data.x, data.pert_idx
+        if self.no_perturb:
+            out = x.reshape(-1,1)
+            out = torch.split(torch.flatten(out), self.num_genes)           
+            return torch.stack(out)
+        else:
+            num_graphs = len(data.batch.unique())
+
+            ## get base gene embeddings
+            emb = self.gene_emb(torch.LongTensor(list(range(self.num_genes))).to(self.args['device']))        
+            # emb = self.bn_emb(emb)
+            # base_emb = self.emb_trans(emb) 
+            base_emb = self.bn_emb(emb)
+            pos_emb = self.emb_pos(torch.LongTensor(list(range(self.num_genes))).to(self.args['device']))
+            for idx, layer in enumerate(self.layers_emb_pos):
+                pos_emb = layer(pos_emb, self.G_coexpress, self.G_coexpress_weight)
+                if idx < len(self.layers_emb_pos) - 1:
+                    pos_emb = pos_emb.relu()
+
+            base_emb = base_emb + 0.2*pos_emb
+            base_emb = self.emb_trans_v2(base_emb)
+
+            ## get perturbation index and embeddings
+
+            pert_index = []
+            for idx, i in enumerate(pert_idx):
+                for j in i:
+                    if j != -1:
+                        pert_index.append([idx, j])
+            pert_index = torch.tensor(pert_index).T
+
+            pert_global_emb = self.pert_emb(torch.LongTensor(list(range(self.num_perts))).to(self.args['device']))        
+
+            ## augment global perturbation embedding with GNN
+            for idx, layer in enumerate(self.sim_layers):
+                pert_global_emb = layer(pert_global_emb, self.G_sim, self.G_sim_weight)
+                if idx < self.num_layers - 1:
+                    pert_global_emb = pert_global_emb.relu()
+
+            ## add global perturbation embedding to each gene in each cell in the batch
+            base_emb = base_emb.reshape(self.num_genes, -1)
+
+
+            if pert_index.shape[0] != 0:
+                ### in case all samples in the batch are controls, then there is no indexing for pert_index.
+                pert_track = {}
+                for i, j in enumerate(pert_index[0]):
+                    if j.item() in pert_track:
+                        pert_track[j.item()] = pert_track[j.item()] + pert_global_emb[pert_index[1][i]]
+                    else:
+                        pert_track[j.item()] = pert_global_emb[pert_index[1][i]]
+                pert_emb = torch.zeros(num_graphs, self.hidden_size).to(self.args['device'])
+                if len(list(pert_track.values())) > 0:
+                    if len(list(pert_track.values())) == 1:
+                        # circumvent when batch size = 1 with single perturbation and cannot feed into MLP
+                        emb_total = self.pert_fuse(torch.stack(list(pert_track.values()) * 2))
+                    else:
+                        emb_total = self.pert_fuse(torch.stack(list(pert_track.values())))
+
+                    for idx, j in enumerate(pert_track.keys()):
+                        # base_emb[j] = base_emb[j] + emb_total[idx]
+                        pert_emb[j] = pert_emb[j] + emb_total[idx]
+                        # if idx != j:
+                        #     print('idx and j:', idx, j)
+
+            preds = []
+            for i in range(5):
+                # print(pert_emb.shape)
+                # print(base_emb.shape)
+                Pi = pert_emb #self.fcp[i](pert_emb)
+                Gi = base_emb #self.fcg[i](base_emb)
+                predi = Pi @ Gi.t() + x.view(num_graphs, self.D)
+                preds.append(predi)
+            
+            return preds
+
+
+
+    def predict(self, pred_mean, pred_var_row, pred_pear_row, pred_var_col, pred_pear_col):
+        eps = 1e-5
+        mean_est_row, mean_est_col = pred_mean.mean(dim=1, keepdim=True), pred_mean.mean(dim=0, keepdim=True)
+        std_est_row, std_est_col = torch.clip(pred_var_row.std(dim=1, keepdim=True), min=eps), torch.clip(pred_var_col.std(dim=0, keepdim=True), min=eps)
+        pear_mean_est_row, pear_std_est_row = pred_pear_row.mean(dim=1, keepdim=True), torch.clip(pred_pear_row.std(dim=1, keepdim=True), min=eps)
+        pear_mean_est_col, pear_std_est_col = pred_pear_col.mean(dim=0, keepdim=True), torch.clip(pred_pear_col.std(dim=0, keepdim=True), min=eps)
+        pred_row = (pred_pear_row - pear_mean_est_row)/pear_std_est_row
+        pred_row = pred_row * std_est_row + mean_est_row
+        pred_col = (pred_pear_col - pear_mean_est_col)/pear_std_est_col
+        pred_col = pred_col * std_est_col + mean_est_col
+        #weights = torch.exp(self.combine_w)
+        #weights = weights/torch.sum(weights)
+        #pred_full = pred_row*weights[0] + pred_col*weights[1]
+        pred_full = pred_row*0.5 + pred_col*0.5
+        #return (pred_row + pred_col)/2# pred_col
+        return pred_full, pred_row, pred_col
+
 
 
 

@@ -197,11 +197,11 @@ def get_gene_idx(pert_data):
       gene2idx[pert_data.gene_names[i]]=i
   return gene2idx
 
-def pert2idx(gene2idx, pert, Y):
+def pert2idx(gene2idx, pert, D):
     P = []
     for p in pert:
         pt = p.split('+')
-        vec = torch.zeros([Y.shape[-1]], dtype=torch.double)
+        vec = torch.zeros([D], dtype=torch.double)
         for ptb in pt:
             if ptb != 'ctrl':
                 if gene2idx.get(ptb) is not None:
@@ -253,6 +253,61 @@ def get_aggregated_data(pert_data, split='train', delta=False):
     perturb_Y = torch.stack(perturb_Y)
     perturb_V = torch.stack(perturb_V)
     return perturb_Y, perturb_V, perturbs
+
+
+def get_extra_feat_dict_GenePT(perts, k=128): 
+  GenePT = pickle.load(open('/oak/stanford/groups/ljerby/dzhu/Data/GenePT_emebdding_v2/GenePT_gene_protein_embedding_model_3_text.pickle','rb'))
+  reduced_GenePT = {}
+  miss = []
+  for ptb in perts:
+      pt = ptb.split('+')[0]
+      if GenePT.get(pt) is not None:
+          reduced_GenePT[pt]=np.array(GenePT[pt])
+      else:
+          miss.append(pt)
+  print('There are ',len(perts),' genes requested to GenePT')
+  print('There are ',len(miss),' genes missing in GenePT')
+  values = np.stack(list(reduced_GenePT.values()))
+  impute = np.mean(values, axis=0)
+  for pt in miss:
+      reduced_GenePT[pt] = impute
+  if k > 0:
+      extra_feat = np.stack(list(reduced_GenePT.values()))
+      pca = PCA(n_components=k)
+      pca.fit(extra_feat)
+      reduced_feat = pca.transform(extra_feat)
+      ct = 0
+      for pt in reduced_GenePT.keys():
+          reduced_GenePT[pt] = reduced_feat[ct]
+          ct += 1
+  return reduced_GenePT
+
+def get_extra_feat_dict_scGPT(perts, k=128): 
+  scGPT = pickle.load(open('/oak/stanford/groups/ljerby/dzhu/Data/gene2scgpt_feature.pkl','rb'))
+  reduced_scGPT = {}
+  miss = []
+  for ptb in perts:
+      pt = ptb.split('+')[0]
+      if scGPT.get(pt) is not None:
+          reduced_scGPT[pt]=np.array(scGPT[pt])
+      else:
+          miss.append(pt)
+  print('There are ',len(perts),' genes requested to scGPT')
+  print('There are ',len(miss),' genes missing in scGPT')
+  values = np.stack(list(reduced_scGPT.values()))
+  impute = np.mean(values, axis=0)
+  for pt in miss:
+      reduced_scGPT[pt] = impute
+  if k > 0:
+      extra_feat = np.stack(list(reduced_scGPT.values()))
+      pca = PCA(n_components=k)
+      pca.fit(extra_feat)
+      reduced_feat = pca.transform(extra_feat)
+      ct = 0
+      for pt in reduced_scGPT.keys():
+          reduced_scGPT[pt] = reduced_feat[ct]
+          ct += 1
+  return reduced_scGPT
 
 
 ############################## Helper Functions from GEARS ####################################

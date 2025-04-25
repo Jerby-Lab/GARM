@@ -567,7 +567,7 @@ class PertData_Essential:
     
             for X, y in zip(Xs, ys):
                 cell_graphs.append(self.create_cell_graph(X.toarray(),
-                                    y.toarray(), de_idx, pert_category, pert_idx))
+                                    y.toarray(), pert_category, pert_idx))
 
         return cell_graphs
 
