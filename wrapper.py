@@ -830,8 +830,8 @@ class GEARS_GAR_M:
                 loss_mean = self.GAR_mean(pred_mean-ctrl, y-ctrl)
                 loss_var_row = GAR_var(pred_var_row - ctrl, y - ctrl, dim=1)
                 loss_pearson_row = GAR_pearson(pred_pear_row - ctrl, y - ctrl, dim=1)
-                loss_var_col = GAR_var(pred_var_row - ctrl, y - ctrl, dim=0)
-                loss_pearson_col = GAR_pearson(pred_pear_row - ctrl, y - ctrl, dim=0)
+                loss_var_col = GAR_var(pred_var_col - ctrl, y - ctrl, dim=0)
+                loss_pearson_col = GAR_pearson(pred_pear_col - ctrl, y - ctrl, dim=0)
                 loss_final = self.GAR_mean(pred_Y-ctrl, y-ctrl) 
                 loss_final = loss_final + self.GAR_mean(pred_Y_row-ctrl, y-ctrl) + self.GAR_mean(pred_Y_col-ctrl, y-ctrl)
                 loss = loss_mean+loss_var_row+loss_pearson_row+loss_var_col+loss_pearson_col+loss_final
@@ -1232,8 +1232,8 @@ class GEARS_GAR_M_v2:
                 loss_mean = self.GAR_mean(pred_mean-ctrl, y-ctrl)
                 loss_var_row = GAR_var(pred_var_row - ctrl, y - ctrl, dim=1)
                 loss_pearson_row = GAR_pearson(pred_pear_row - ctrl, y - ctrl, dim=1)
-                loss_var_col = GAR_var(pred_var_row - ctrl, y - ctrl, dim=0)
-                loss_pearson_col = GAR_pearson(pred_pear_row - ctrl, y - ctrl, dim=0)
+                loss_var_col = GAR_var(pred_var_col - ctrl, y - ctrl, dim=0)
+                loss_pearson_col = GAR_pearson(pred_pear_col - ctrl, y - ctrl, dim=0)
                 loss_final = self.GAR_mean(pred_Y-ctrl, y-ctrl) 
                 loss_final = loss_final + self.GAR_mean(pred_Y_row-ctrl, y-ctrl) + self.GAR_mean(pred_Y_col-ctrl, y-ctrl)
                 loss = loss_mean+loss_var_row+loss_pearson_row+loss_var_col+loss_pearson_col+loss_final

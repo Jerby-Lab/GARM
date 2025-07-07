@@ -26,6 +26,17 @@ def set_all_seeds(SEED):
   torch.backends.cudnn.benchmark = False
 
 
+def getPertEmb(perts, emb_dict):
+  results = []
+  for pt in perts:
+    pert_emb = 0
+    for p in pt.split('+'):
+      if p not in ['ctrl', 'non-targeting']:
+        pert_emb += emb_dict[p]
+    results.append(pert_emb)
+  return torch.from_numpy(np.stack(results)).to(torch.float)
+
+
 def aggregated_eval_row(pred, Y, perturbs):
     mse_dict = {}
     pearson_dict = {}
@@ -64,10 +75,10 @@ def aggregated_eval_row(pred, Y, perturbs):
     aggregated_metrics['mse'] = np.mean(list(mse_dict.values()))
     aggregated_metrics['pearson'] = np.mean(list(pearson_dict.values()))
     aggregated_metrics['spearman'] = np.mean(list(spearman_dict.values()))
-    aggregated_metrics['auroc_up'] = np.mean(list(auroc_up_dict.values()))
-    aggregated_metrics['auprc_up'] = np.mean(list(auprc_up_dict.values()))
-    aggregated_metrics['auroc_down'] = np.mean(list(auroc_down_dict.values()))
-    aggregated_metrics['auprc_down'] = np.mean(list(auprc_down_dict.values()))
+    aggregated_metrics['auroc_up'] = np.nanmean(list(auroc_up_dict.values()))
+    aggregated_metrics['auprc_up'] = np.nanmean(list(auprc_up_dict.values()))
+    aggregated_metrics['auroc_down'] = np.nanmean(list(auroc_down_dict.values()))
+    aggregated_metrics['auprc_down'] = np.nanmean(list(auprc_down_dict.values()))
     return metrics, aggregated_metrics
 
 
@@ -136,10 +147,10 @@ def aggregated_eval_col(pred, Y):
     aggregated_metrics['mse'] = np.mean(col_mse)
     aggregated_metrics['pearson'] = np.mean(col_pearson[ids])
     aggregated_metrics['spearman'] = np.mean(col_spearman[ids_spearman])
-    aggregated_metrics['auroc_up'] = np.mean(col_auroc_up)
-    aggregated_metrics['auprc_up'] = np.mean(col_auprc_up)
-    aggregated_metrics['auroc_down'] = np.mean(col_auroc_down)
-    aggregated_metrics['auprc_down'] = np.mean(col_auprc_down)
+    aggregated_metrics['auroc_up'] = np.nanmean(col_auroc_up)
+    aggregated_metrics['auprc_up'] = np.nanmean(col_auprc_up)
+    aggregated_metrics['auroc_down'] = np.nanmean(col_auroc_down)
+    aggregated_metrics['auprc_down'] = np.nanmean(col_auprc_down)
     return metrics, aggregated_metrics
 
 

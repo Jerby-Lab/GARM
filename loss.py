@@ -29,6 +29,77 @@ def GAR_pearson(y_pred, y_truth, dim=0): # dim=0: column-wise; dim=1:row-wise
     loss_pearson = ((y_pred-pred_mean)/pred_std - (y_truth-truth_mean)/truth_std)**2/2
     return loss_pearson.mean()
 
+class GAR_row(torch.nn.Module):
+    def __init__(self, alpha=1.0, version='GAR', device = None):
+        super().__init__()
+        if not device:
+            self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        else:
+            self.device = device
+        self.alpha = alpha
+        self.basic_loss = torch.nn.L1Loss(reduce=False)
+        self.version = version
+
+    def forward(self, y_pred, y_truth):
+        pred_std, truth_std = torch.clip(y_pred.std(dim=1, keepdim=True), min=eps), torch.clip(y_truth.std(dim=1, keepdim=True), min=eps)
+        pred_mean, truth_mean = y_pred.mean(dim=1, keepdim=True), y_truth.mean(dim=1, keepdim=True)
+        loss_pearson = ((y_pred-pred_mean)/pred_std - (y_truth-truth_mean)/truth_std)**2/2
+        diff = (y_pred-pred_mean) - (y_truth-truth_mean)
+        loss_cov = diff**2/2
+        bloss = self.basic_loss(y_pred, y_truth).mean(dim=1, keepdim=True) + eps
+        aloss = loss_pearson.mean(dim=1, keepdim=True) + eps
+        closs = loss_cov.mean(dim=1, keepdim=True) + eps
+        factor = torch.cat((bloss, aloss, closs), dim=1)
+        if self.alpha > 1.0:
+            factor = factor.min(dim=1, keepdim=True).values.detach()
+        elif self.alpha < 1.0:
+            factor = factor.max(dim=1, keepdim=True).values.detach()
+        else:
+            factor = 1.0
+        aloss, bloss, closs = aloss/factor, bloss/factor, closs/factor
+        loss = (aloss**(1/self.alpha) + bloss**(1/self.alpha) + closs**(1/self.alpha))/3
+        if self.version == 'GAR-EXP':
+          loss = factor*(loss**self.alpha)
+        else:
+          loss = loss.log()*self.alpha
+        return loss.mean()
+
+
+class GAR_col(torch.nn.Module):
+    def __init__(self, alpha=1.0, version='GAR', device = None):
+        super().__init__()
+        if not device:
+            self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        else:
+            self.device = device
+        self.alpha = alpha
+        self.basic_loss = torch.nn.L1Loss(reduce=False)
+        self.version = version
+
+    def forward(self, y_pred, y_truth):
+        pred_std, truth_std = torch.clip(y_pred.std(dim=0, keepdim=True), min=eps), torch.clip(y_truth.std(dim=0, keepdim=True), min=eps)
+        pred_mean, truth_mean = y_pred.mean(dim=0, keepdim=True), y_truth.mean(dim=0, keepdim=True)
+        loss_pearson = ((y_pred-pred_mean)/pred_std - (y_truth-truth_mean)/truth_std)**2/2
+        diff = (y_pred-pred_mean) - (y_truth-truth_mean)
+        loss_cov = diff**2/2
+        bloss = self.basic_loss(y_pred, y_truth).mean(dim=0, keepdim=True) + eps
+        aloss = loss_pearson.mean(dim=0, keepdim=True) + eps
+        closs = loss_cov.mean(dim=0, keepdim=True) + eps
+        factor = torch.cat((bloss, aloss, closs), dim=0)
+        if self.alpha > 1.0:
+            factor = factor.min(dim=0, keepdim=True).values.detach()
+        elif self.alpha < 1.0:
+            factor = factor.max(dim=0, keepdim=True).values.detach()
+        else:
+            factor = 1.0
+        aloss, bloss, closs = aloss/factor, bloss/factor, closs/factor
+        loss = (aloss**(1/self.alpha) + bloss**(1/self.alpha) + closs**(1/self.alpha))/3
+        if self.version == 'GAR-EXP':
+          loss = factor*(loss**self.alpha)
+        else:
+          loss = loss.log()*self.alpha
+        return loss.mean()
+
 ################################ GEARS loss function ############################################
 
 def loss_fct(pred, y, perts, ctrl = None, direction_lambda = 1e-3, dict_filter = None):

@@ -19,7 +19,7 @@ parser.add_argument('--decay', default=5e-4, type=float, help='weight decay for 
 parser.add_argument('--hidden_size', default=128, type=int, help='GNN hidden size')
 
 args = parser.parse_args()
-if args.dataset in ['k562', 'rpe1']:
+if args.dataset in ['jurkat', 'hepg2', 'replogle_rpe1_essential']:
     os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 SEED = [1,2,3,4,5]
 lr = args.lr
