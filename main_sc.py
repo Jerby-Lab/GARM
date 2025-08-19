@@ -1,42 +1,37 @@
 import torch
 import numpy as np
 from wrapper import *
-from dataset import *
 from model import *
 from loss import *
 from utils import *
 from pertdata import *
-from scipy.sparse.linalg import eigsh
-from scipy.sparse import csc_matrix
 import argparse
 import os
 
 parser = argparse.ArgumentParser(description = 'Perturb-Seq experiments')
-parser.add_argument('--dataset', default='adamson', type=str, help='the name for the dataset to use')
+parser.add_argument('--dataset', default='curated_k562', type=str, help='the name for the dataset to use')
 parser.add_argument('--method', default='GARM', type=str, help='method to use')
 parser.add_argument('--lr', default=1e-3, type=float, help='initial learning rate')
 parser.add_argument('--decay', default=5e-4, type=float, help='weight decay for training the model')
 parser.add_argument('--hidden_size', default=128, type=int, help='GNN hidden size')
 
 args = parser.parse_args()
-if args.dataset in ['jurkat', 'hepg2', 'replogle_rpe1_essential']:
-    os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 SEED = [1,2,3,4,5]
 lr = args.lr
 decay = args.decay
 epochs = 10
-if args.dataset in ['norman', 'adamson', 'dixit', 'replogle_k562_essential', 'replogle_rpe1_essential']:
-    pert_data = PertData() 
+if args.dataset in ['curated_k562', 'curated_rpe1']:
+    # curated version of the data from GEARS paper
+    pert_data = PertData_GEARS()
     pert_data.load(data_name = args.dataset, avg_sc=False) 
 elif args.dataset in ['jurkat', 'hepg2', 'k562', 'rpe1']:
     pert_data = PertData_Essential()
     pert_data.load(data_name=args.dataset, avg_sc=False)
 gene2idx = get_gene_idx(pert_data)
 
-OE_signatures = np.load('/oak/stanford/groups/ljerby/dzhu/Data/PertrubSeq_OE_signatures.npz', allow_pickle=True)
-OE_signatures = OE_signatures['arr_0'].item()
-column_names = np.load('/oak/stanford/groups/ljerby/dzhu/Data/PertrubSeq_GeneSetOE_Replogle2022_K562_column_names.npy')
-
+signatures_dict = np.load('data/signatures_dict.npz', allow_pickle=True)
+signatures_dict = signatures_dict['arr_0'].item()
+signatures_list = np.load('data/signatures_list.npy')
 
 for seed in SEED:
   set_all_seeds(seed)
@@ -73,7 +68,8 @@ for seed in SEED:
     print('Epoch=%s, lr=%.4f'%(epoch, gears_model.scheduler.get_last_lr()[0]))
     # evaluations
     truths, perts = train_Y[ids_no_ctrl]-ctrl, train_perturbs[ids_no_ctrl]
-    tmp = [[s.split('+')[0]] for s in perts]
+    tmp = [s.split('+') for s in perts]
+    #tmp = [[s.split('+')[0]] for s in perts]
     preds = gears_model.predict_list(tmp)
     preds = np.stack(list(preds.values()))
     preds = torch.from_numpy(preds)-ctrl
@@ -82,8 +78,8 @@ for seed in SEED:
     metrics, aggregated_metrics = aggregated_eval_col(preds, truths)
     print('col-train:', aggregated_metrics)
     
-    OE_preds = torch.from_numpy(pred2OE(preds.numpy(), OE_signatures, column_names, gene2idx))
-    OE_truths = torch.from_numpy(pred2OE(truths.numpy(), OE_signatures, column_names, gene2idx))
+    OE_preds = torch.from_numpy(pred2OE(preds.numpy(), signatures_dict, signatures_list, gene2idx))
+    OE_truths = torch.from_numpy(pred2OE(truths.numpy(), signatures_dict, signatures_list, gene2idx))
     print('-'*30)
     metrics, aggregated_metrics = aggregated_eval_row(OE_preds, OE_truths, perts)
     print('OE-row-train:', aggregated_metrics)
@@ -93,7 +89,8 @@ for seed in SEED:
 
 
     truths, perts = val_Y-ctrl, val_perturbs
-    tmp = [[s.split('+')[0]] for s in perts]
+    tmp = [s.split('+') for s in perts]
+    #tmp = [[s.split('+')[0]] for s in perts]
     preds = gears_model.predict_list(tmp)
     preds = np.stack(list(preds.values()))
     preds = torch.from_numpy(preds)-ctrl
@@ -106,8 +103,8 @@ for seed in SEED:
         best_pred_val = preds
         best_flag = True
     
-    OE_preds = torch.from_numpy(pred2OE(preds.numpy(), OE_signatures, column_names, gene2idx))
-    OE_truths = torch.from_numpy(pred2OE(truths.numpy(), OE_signatures, column_names, gene2idx))
+    OE_preds = torch.from_numpy(pred2OE(preds.numpy(), signatures_dict, signatures_list, gene2idx))
+    OE_truths = torch.from_numpy(pred2OE(truths.numpy(), signatures_dict, signatures_list, gene2idx))
     print('-'*30)
     metrics, aggregated_metrics = aggregated_eval_row(OE_preds, OE_truths, perts)
     print('OE-row-validation:', aggregated_metrics)
@@ -117,7 +114,8 @@ for seed in SEED:
 
 
     truths, perts = test_Y-ctrl, test_perturbs
-    tmp = [[s.split('+')[0]] for s in perts]
+    tmp = [s.split('+') for s in perts]
+    #tmp = [[s.split('+')[0]] for s in perts]
     preds = gears_model.predict_list(tmp)
     preds = np.stack(list(preds.values()))
     preds = torch.from_numpy(preds)-ctrl
@@ -127,11 +125,11 @@ for seed in SEED:
     print('col-testing:', aggregated_metrics)
     if best_flag:
         best_pred_test = preds
-        fname = 'predictions/'+pert_data.dataset_name+'_SC_'+args.method+'_seed='+str(seed)+'_lr='+str(lr)+'_decay='+str(decay)+'_hidden='+str(args.hidden_size)+'.npz'
+        fname = 'predictions/'+pert_data.dataset_name+'_SC09_'+args.method+'_seed='+str(seed)+'_lr='+str(lr)+'_decay='+str(decay)+'_hidden='+str(args.hidden_size)+'.npz'
         np.savez(fname, epoch=epoch, best_pearson_val=best_pearson_val, best_pred_val=best_pred_val, best_pred_test=best_pred_test, val_perturbs=val_perturbs, test_perturbs=test_perturbs)
     
-    OE_preds = torch.from_numpy(pred2OE(preds.numpy(), OE_signatures, column_names, gene2idx))
-    OE_truths = torch.from_numpy(pred2OE(truths.numpy(), OE_signatures, column_names, gene2idx))
+    OE_preds = torch.from_numpy(pred2OE(preds.numpy(), signatures_dict, signatures_list, gene2idx))
+    OE_truths = torch.from_numpy(pred2OE(truths.numpy(), signatures_dict, signatures_list, gene2idx))
     print('-'*30)
     metrics, aggregated_metrics = aggregated_eval_row(OE_preds, OE_truths, perts)
     print('OE-row-testing:', aggregated_metrics)

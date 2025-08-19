@@ -26,10 +26,35 @@ def set_all_seeds(SEED):
   torch.backends.cudnn.benchmark = False
 
 
+def impute_dict_feature(dict_feature, perts):
+    impute = 0
+    ct = 0
+    for pt in perts:
+        if dict_feature.get(pt) is not None:
+            impute += dict_feature[pt]
+            ct += 1
+    impute /= ct
+    for pt in perts:
+        if dict_feature.get(pt) is None:
+            dict_feature[pt] = impute
+    return dict_feature
+
+def getPertEmb_combined(perts, emb_dict):
+  results = []
+  for pt in perts:
+    pert_emb = []
+    for p in pt.split('+'):
+      if p not in ['ctrl', 'non-targeting']:
+        pert_emb.append(torch.from_numpy(emb_dict[p]).view(1,-1).to(torch.float))
+    results.append(pert_emb)
+  return results
+
+
 def getPertEmb(perts, emb_dict):
   results = []
   for pt in perts:
     pert_emb = 0
+    # print(pt)
     for p in pt.split('+'):
       if p not in ['ctrl', 'non-targeting']:
         pert_emb += emb_dict[p]
@@ -51,8 +76,11 @@ def aggregated_eval_row(pred, Y, perturbs):
         if perturbs[i] in ['ctrl', 'non-targeting']:
             continue
         mse_dict[perturbs[i]] = torch.nn.functional.mse_loss(pred[i,:], Y[i,:]).detach().numpy()
-        pearson_dict[perturbs[i]] = pearsonr(pred[i,:].detach().numpy(), Y[i,:].numpy())[0]
-        spearman_dict[perturbs[i]] = spearmanr(pred[i,:].detach().numpy(), Y[i,:].numpy()).statistic
+        p = pred[i,:].detach()
+        if p.std() == 0:
+            p += torch.rand(p.shape)*1e-10
+        pearson_dict[perturbs[i]] = pearsonr(p.numpy(), Y[i,:].numpy())[0]
+        spearman_dict[perturbs[i]] = spearmanr(p.numpy(), Y[i,:].numpy()).statistic
         try:
             auroc_up_dict[perturbs[i]] = roc_auc_score(Y[i,:].numpy()>up_thres[i], pred[i,:].detach().numpy())
         except:
@@ -156,13 +184,13 @@ def aggregated_eval_col(pred, Y):
 
 
 
-def OE2mat(OE_signatures, column_names, gene2idx):
+def OE2mat(signatures_dict, signatures_list, gene2idx):
     matOE = []
     N = max(list(gene2idx.values()))+1
-    for k in column_names:
+    for k in signatures_list:
         if k in ['KO', 'mTIL']:
             continue
-        signature = OE_signatures[k]
+        signature = signatures_dict[k]
         score = np.zeros([N, 1])
         ct = 0
         for sig in signature:
@@ -179,12 +207,12 @@ def OE2mat(OE_signatures, column_names, gene2idx):
 
 
 
-def pred2OE(pred, OE_signatures, column_names, gene2idx):
+def pred2OE(pred, signatures_dict, signatures_list, gene2idx):
     pred_OE = []
-    for k in column_names:
+    for k in signatures_list:
         if k in ['KO', 'mTIL']:
             continue
-        signature = OE_signatures[k]
+        signature = signatures_dict[k]
         score = np.zeros([pred.shape[0], 1])
         ct = 0
         for sig in signature:
@@ -267,7 +295,7 @@ def get_aggregated_data(pert_data, split='train', delta=False):
 
 
 def get_extra_feat_dict_GenePT(perts, k=128): 
-  GenePT = pickle.load(open('/oak/stanford/groups/ljerby/dzhu/Data/GenePT_emebdding_v2/GenePT_gene_protein_embedding_model_3_text.pickle','rb'))
+  GenePT = pickle.load(open('data/GenePT_gene_protein_embedding_model_3_text.pickle','rb'))
   reduced_GenePT = {}
   miss = []
   for ptb in perts:
@@ -294,7 +322,7 @@ def get_extra_feat_dict_GenePT(perts, k=128):
   return reduced_GenePT
 
 def get_extra_feat_dict_scGPT(perts, k=128): 
-  scGPT = pickle.load(open('/oak/stanford/groups/ljerby/dzhu/Data/gene2scgpt_feature.pkl','rb'))
+  scGPT = pickle.load(open('data/gene2scgpt_feature.pkl','rb'))
   reduced_scGPT = {}
   miss = []
   for ptb in perts:
@@ -693,7 +721,7 @@ def create_cell_graph_dataset_for_prediction(pert_gene, ctrl_adata, gene_names,
     """
 
     # Get the indices (and signs) of applied perturbation
-    pert_idx = [np.where(p == np.array(gene_names))[0][0] for p in pert_gene]
+    pert_idx = [np.where(p == np.array(gene_names))[0][0] for p in pert_gene if (p!='ctrl' and p!='non-targeting')]
 
     Xs = ctrl_adata[np.random.randint(0, len(ctrl_adata), num_samples), :].X.toarray()
     #Xs = ctrl_adata.X.toarray().mean(axis=0, keepdims=True)

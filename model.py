@@ -74,7 +74,7 @@ class Perturb_NN_GARM_GO(torch.nn.Module):
 
 
 
-class Perturb_NN_GARM(torch.nn.Module):
+class Perturb_NN_GARM_combined(torch.nn.Module):
     def __init__(self, D, hidden_sizes=(), D_pert=3072, K=256, activation='relu'):
         super().__init__()
         self.G = torch.nn.Parameter(torch.randn(K, D))
@@ -85,6 +85,57 @@ class Perturb_NN_GARM(torch.nn.Module):
     def forward(self, P1, P2):
         """forward pass"""
         G = self.G
+        PP1 = []
+        for ps in P1:
+          pps = []
+          for p in ps:
+            pps.append(self.MLP_F(p)[0])
+          PP1.append(pps)
+        PP = []
+        for i in range(len(PP1)):
+          pps = 0
+          for j in range(len(PP1[i])):
+            p = torch.cat([PP1[i][j], P2[i][j]], dim=-1)
+            pps += p
+          pps = torch.nn.functional.normalize(pps, dim=-1)
+          pps = self.MLP_P(pps)[0].view(1,5,self.K)
+          PP.append(pps)
+        P = torch.cat(PP, dim=0)
+        P = torch.permute(P, (1,0,2))
+        preds = []
+        for i in range(5):
+            Gi = G
+            Pi = torch.nn.functional.tanh(P[i,:,:])
+            predi = Pi @ Gi
+            preds.append(predi)
+        return preds
+
+    def predict(self, pred_mean, pred_var_row, pred_pear_row, pred_var_col, pred_pear_col):
+        eps = 1e-5
+        mean_est_row, mean_est_col = pred_mean.mean(dim=1, keepdim=True), pred_mean.mean(dim=0, keepdim=True)
+        std_est_row, std_est_col = torch.clip(pred_var_row.std(dim=1, keepdim=True), min=eps), torch.clip(pred_var_col.std(dim=0, keepdim=True), min=eps)
+        pear_mean_est_row, pear_std_est_row = pred_pear_row.mean(dim=1, keepdim=True), torch.clip(pred_pear_row.std(dim=1, keepdim=True), min=eps)
+        pear_mean_est_col, pear_std_est_col = pred_pear_col.mean(dim=0, keepdim=True), torch.clip(pred_pear_col.std(dim=0, keepdim=True), min=eps)
+        pred_row = (pred_pear_row - pear_mean_est_row)/pear_std_est_row
+        pred_row = pred_row * std_est_row + mean_est_row
+        pred_col = (pred_pear_col - pear_mean_est_col)/pear_std_est_col
+        pred_col = pred_col * std_est_col + mean_est_col
+        pred_full = pred_row*0.5 + pred_col*0.5
+        return pred_full, pred_row, pred_col
+
+
+class Perturb_NN_GARM(torch.nn.Module):
+    def __init__(self, D, hidden_sizes=(), D_pert=3072, K=256, activation='relu'):
+        super().__init__()
+        self.G = torch.nn.Parameter(torch.randn(K, D))
+        self.K, self.D = K, D
+        self.MLP_F = FFNN(input_dim=D_pert, hidden_sizes=hidden_sizes, num_classes=256*3, activation=activation)
+        self.MLP_P = FFNN(input_dim=256*4, hidden_sizes=hidden_sizes, num_classes=K*5, activation=activation)
+
+    def forward(self, P1, P2):
+        """forward pass"""
+        #P1, P2 = torch.nn.functional.normalize(P1), torch.nn.functional.normalize(P2)
+        G = self.G
         P1,_ = self.MLP_F(P1)
         P = torch.cat([P1, P2], dim=-1)
         B = P.shape[0]
@@ -94,7 +145,11 @@ class Perturb_NN_GARM(torch.nn.Module):
         for i in range(5):
             Gi = G
             Pi = torch.nn.functional.tanh(P[i,:,:])
+            #predi = Pi @ torch.nn.functional.tanh(Gi)
+            #Pi = P[i,:,:]
             predi = Pi @ Gi
+            #Pi = torch.nn.functional.relu(P[i,:,:])
+            #predi = Pi @ torch.nn.functional.relu(Gi)
             preds.append(predi)
         return preds
 

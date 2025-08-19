@@ -1,7 +1,6 @@
 import torch
 import numpy as np
 from wrapper import *
-from dataset import *
 from model import *
 from loss import *
 from utils import *
@@ -12,7 +11,7 @@ import argparse
 import os
 
 parser = argparse.ArgumentParser(description = 'Perturb-Seq experiments')
-parser.add_argument('--dataset', default='weissman', type=str, help='the name for the dataset to use')
+parser.add_argument('--dataset', default='nadig-replogle', type=str, help='the name for the dataset to use')
 parser.add_argument('--decay', default=1e-4, type=float, help='weight decay')
 parser.add_argument('--method', default='genept', type=str, help='method to use (genept, scgpt, coexpress)')
 parser.add_argument('--K', default=128, type=int, help='number of princeple componentse')
@@ -28,10 +27,9 @@ pert_data = PertData_Essential_v2()
 pert_data.load()
 gene2idx = get_gene_idx(pert_data)
 
-OE_signatures = np.load('/oak/stanford/groups/ljerby/dzhu/Data/PertrubSeq_OE_signatures.npz', allow_pickle=True)
-OE_signatures = OE_signatures['arr_0'].item()
-column_names = np.load('/oak/stanford/groups/ljerby/dzhu/Data/PertrubSeq_GeneSetOE_Replogle2022_K562_column_names.npy')
-
+signatures_dict = np.load('data/signatures_dict.npz', allow_pickle=True)
+signatures_dict = signatures_dict['arr_0'].item()
+signatures_list = np.load('data/signatures_list.npy')
 
 for test_name in test_set:
   val_set = np.setdiff1d(test_set, [test_name])
@@ -71,14 +69,17 @@ for test_name in test_set:
       PG = pert2idx(gene2idx, perts, Y.shape[-1]) @ G
       W = torch.inverse(PG.t() @ PG + torch.eye(args.K)*decay) @ (PG.t() @ tmp @ G) @ torch.inverse(G.t() @ G + torch.eye(args.K)*decay)
       preds = (PG @ W) @ G.t() + b
+    if args.method == 'non-ctrl-mean':
+      b = Y.mean(dim=0, keepdims=True)
+      preds = b.repeat(truths.shape[0], 1)
       
     metrics, aggregated_metrics = aggregated_eval_row(preds, truths, perts)
     print('row-train:', aggregated_metrics)
     metrics, aggregated_metrics = aggregated_eval_col(preds, truths)
     print('col-train:', aggregated_metrics)
 
-    OE_preds = torch.from_numpy(pred2OE(preds.numpy(), OE_signatures, column_names, gene2idx))
-    OE_truths = torch.from_numpy(pred2OE(truths.numpy(), OE_signatures, column_names, gene2idx))
+    OE_preds = torch.from_numpy(pred2OE(preds.numpy(), signatures_dict, signatures_list, gene2idx))
+    OE_truths = torch.from_numpy(pred2OE(truths.numpy(), signatures_dict, signatures_list, gene2idx))
     print('-'*30)
     metrics, aggregated_metrics = aggregated_eval_row(OE_preds, OE_truths, perts)
     print('OE-row-train:', aggregated_metrics)
@@ -97,6 +98,8 @@ for test_name in test_set:
     if args.method == 'coexpress':
       PG = pert2idx(gene2idx, perts, Y.shape[-1]) @ G
       preds = (PG @ W) @ G.t() + b
+    if args.method == 'non-ctrl-mean':
+      preds = b.repeat(truths.shape[0], 1)
       
     best_pred_val = preds.detach().numpy()
     metrics, aggregated_metrics = aggregated_eval_row(preds, truths, perts)
@@ -105,8 +108,8 @@ for test_name in test_set:
     print('col-validation:', aggregated_metrics)
     best_pearson_val = aggregated_metrics['pearson']
 
-    OE_preds = torch.from_numpy(pred2OE(preds.numpy(), OE_signatures, column_names, gene2idx))
-    OE_truths = torch.from_numpy(pred2OE(truths.numpy(), OE_signatures, column_names, gene2idx))
+    OE_preds = torch.from_numpy(pred2OE(preds.numpy(), signatures_dict, signatures_list, gene2idx))
+    OE_truths = torch.from_numpy(pred2OE(truths.numpy(), signatures_dict, signatures_list, gene2idx))
     print('-'*30)
     metrics, aggregated_metrics = aggregated_eval_row(OE_preds, OE_truths, perts)
     print('OE-row-validation:', aggregated_metrics)
@@ -125,6 +128,8 @@ for test_name in test_set:
     if args.method == 'coexpress':
       PG = pert2idx(gene2idx, perts, Y.shape[-1]) @ G
       preds = (PG @ W) @ G.t() + b
+    if args.method == 'non-ctrl-mean':
+      preds = b.repeat(truths.shape[0], 1)
     
     best_pred_test = preds.detach().numpy() 
     metrics, aggregated_metrics = aggregated_eval_row(preds, truths, perts)
@@ -137,8 +142,8 @@ for test_name in test_set:
       fname = 'predictions/'+pert_data.dataset_name+'_'+args.method+'_decay='+str(decay)+'.npz'
     np.savez(fname, best_pearson_val=best_pearson_val, best_pred_val=best_pred_val, best_pred_test=best_pred_test, val_perturbs=val_perturbs, test_perturbs=test_perturbs)
 
-    OE_preds = torch.from_numpy(pred2OE(preds.numpy(), OE_signatures, column_names, gene2idx))
-    OE_truths = torch.from_numpy(pred2OE(truths.numpy(), OE_signatures, column_names, gene2idx))
+    OE_preds = torch.from_numpy(pred2OE(preds.numpy(), signatures_dict, signatures_list, gene2idx))
+    OE_truths = torch.from_numpy(pred2OE(truths.numpy(), signatures_dict, signatures_list, gene2idx))
     print('-'*30)
     metrics, aggregated_metrics = aggregated_eval_row(OE_preds, OE_truths, perts)
     print('OE-row-testing:', aggregated_metrics)

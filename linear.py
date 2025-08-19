@@ -1,7 +1,6 @@
 import torch
 import numpy as np
 from wrapper import *
-from dataset import *
 from model import *
 from loss import *
 from utils import *
@@ -12,7 +11,7 @@ import argparse
 import os
 
 parser = argparse.ArgumentParser(description = 'Perturb-Seq experiments')
-parser.add_argument('--dataset', default='Adamson', type=str, help='the name for the dataset to use')
+parser.add_argument('--dataset', default='curated_k562', type=str, help='the name for the dataset to use')
 parser.add_argument('--decay', default=1e-4, type=float, help='weight decay')
 parser.add_argument('--method', default='genept', type=str, help='method to use (genept, scgpt, coexpress)')
 parser.add_argument('--K', default=128, type=int, help='number of princeple componentse')
@@ -21,20 +20,22 @@ parser.add_argument('--K', default=128, type=int, help='number of princeple comp
 
 args = parser.parse_args()
 SEED = [1,2,3,4,5]
+#SEED = [1,2,3,4,5,6,7,8,9,10]
 decay = args.decay
 reduced_GenePT = None
 reduced_scGPT = None
-if args.dataset in ['norman', 'adamson', 'dixit', 'replogle_k562_essential', 'replogle_rpe1_essential']:
-    pert_data = PertData() 
+if args.dataset in ['curated_k562', 'curated_rpe1']:
+    # curated version of the data from GEARS paper
+    pert_data = PertData_GEARS() 
     pert_data.load(data_name = args.dataset) 
 elif args.dataset in ['jurkat', 'hepg2', 'k562', 'rpe1']:
     pert_data = PertData_Essential()
     pert_data.load(data_name=args.dataset)
 gene2idx = get_gene_idx(pert_data)
 
-OE_signatures = np.load('/oak/stanford/groups/ljerby/dzhu/Data/PertrubSeq_OE_signatures.npz', allow_pickle=True)
-OE_signatures = OE_signatures['arr_0'].item()
-column_names = np.load('/oak/stanford/groups/ljerby/dzhu/Data/PertrubSeq_GeneSetOE_Replogle2022_K562_column_names.npy')
+signatures_dict = np.load('data/signatures_dict.npz', allow_pickle=True)
+signatures_dict = signatures_dict['arr_0'].item()
+signatures_list = np.load('data/signatures_list.npy')
 
 
 for seed in SEED:
@@ -51,7 +52,9 @@ for seed in SEED:
   if args.method == 'scgpt' and reduced_scGPT is None:
     reduced_scGPT = get_extra_feat_dict_scGPT(get_genes_from_perts(np.concatenate([train_perturbs, val_perturbs, test_perturbs], axis=0)), k=-1)
 
-  ctrl = np.array(pert_data.ctrl_mean)
+  ctrl = np.array(pert_data.ctrl_mean)#.reshape(1,-1)
+  ctrl_std = pert_data.ctrl_adata.X.toarray().std(axis=0, keepdims=True)#.reshape(1,-1)
+  print('ctrl shape:', ctrl.shape, ctrl_std.shape)
   if args.dataset in ['k562', 'rpe1', 'jurkat', 'hepg2']:
     train_Y, val_Y, test_Y = train_Y.to(torch.float), val_Y.to(torch.float), test_Y.to(torch.float)
   else:
@@ -65,7 +68,7 @@ for seed in SEED:
   elif args.method == 'scgpt':
     pert_emb = getPertEmb(perts, reduced_scGPT) #torch.from_numpy(np.stack([reduced_scGPT[pt.split('+')[0]] for pt in perts])).to(torch.float)
   if args.method in ['genept', 'scgpt']:
-    pert = pert_emb #torch.nn.functional.normalize(pert_emb, dim=1) #torch.cat([pert_emb, torch.ones(pert_emb.shape[0], 1)], dim=-1)
+    pert = torch.nn.functional.normalize(pert_emb, dim=1) #torch.cat([pert_emb, torch.ones(pert_emb.shape[0], 1)], dim=-1)
     IW = torch.inverse(pert.t() @ pert + decay*torch.eye(pert.shape[-1])) 
     XY = pert.t() @ Y
     W = IW @ XY
@@ -80,14 +83,27 @@ for seed in SEED:
     PG = pert2idx(gene2idx, perts, Y.shape[-1]) @ G
     W = torch.inverse(PG.t() @ PG + torch.eye(args.K)*decay) @ (PG.t() @ tmp @ G) @ torch.inverse(G.t() @ G + torch.eye(args.K)*decay)
     preds = (PG @ W) @ G.t() + b
+  if args.method == 'non-ctrl-mean':
+    b = Y.mean(dim=0, keepdims=True)
+    preds = b.repeat(truths.shape[0], 1)
+  if args.method == 'mean-shift':
+    k = (Y @ ctrl.T) / (ctrl @ ctrl.T)
+    k = k.mean()
+    p = k * ctrl
+    preds = np.repeat(p,Y.shape[0],axis=0)
+  if args.method == 'std-shift':
+    k = (Y @ ctrl_std.T) / (ctrl_std @ ctrl_std.T)
+    k = k.mean()
+    p = k * ctrl_std
+    preds = np.repeat(p,Y.shape[0],axis=0)
     
   metrics, aggregated_metrics = aggregated_eval_row(preds, truths, perts)
   print('row-train:', aggregated_metrics)
   metrics, aggregated_metrics = aggregated_eval_col(preds, truths)
   print('col-train:', aggregated_metrics)
 
-  OE_preds = torch.from_numpy(pred2OE(preds.numpy(), OE_signatures, column_names, gene2idx))
-  OE_truths = torch.from_numpy(pred2OE(truths.numpy(), OE_signatures, column_names, gene2idx))
+  OE_preds = torch.from_numpy(pred2OE(preds.numpy(), signatures_dict, signatures_list, gene2idx))
+  OE_truths = torch.from_numpy(pred2OE(truths.numpy(), signatures_dict, signatures_list, gene2idx))
   print('-'*30)
   metrics, aggregated_metrics = aggregated_eval_row(OE_preds, OE_truths, perts)
   print('OE-row-train:', aggregated_metrics)
@@ -101,11 +117,15 @@ for seed in SEED:
   elif args.method == 'scgpt':
     pert_emb = getPertEmb(perts, reduced_scGPT) #torch.from_numpy(np.stack([reduced_scGPT[pt.split('+')[0]] for pt in perts])).to(torch.float)
   if args.method in ['genept', 'scgpt']:
-    pert = pert_emb #torch.nn.functional.normalize(pert_emb, dim=1) #torch.cat([pert_emb, torch.ones(pert_emb.shape[0], 1)], dim=-1)
+    pert = torch.nn.functional.normalize(pert_emb, dim=1) #torch.cat([pert_emb, torch.ones(pert_emb.shape[0], 1)], dim=-1)
     preds = pert @ W
   if args.method == 'coexpress':
     PG = pert2idx(gene2idx, perts, Y.shape[-1]) @ G
     preds = (PG @ W) @ G.t() + b
+  if args.method == 'non-ctrl-mean':
+    preds = b.repeat(truths.shape[0], 1)
+  if args.method in ['mean-shift','std-shift']:
+    preds = np.repeat(p,truths.shape[0],axis=0)
   best_pred_val = preds.detach().numpy()
   metrics, aggregated_metrics = aggregated_eval_row(preds, truths, perts)
   print('row-validation:', aggregated_metrics)
@@ -113,8 +133,8 @@ for seed in SEED:
   print('col-validation:', aggregated_metrics)
   best_pearson_val = aggregated_metrics['pearson']
 
-  OE_preds = torch.from_numpy(pred2OE(preds.numpy(), OE_signatures, column_names, gene2idx))
-  OE_truths = torch.from_numpy(pred2OE(truths.numpy(), OE_signatures, column_names, gene2idx))
+  OE_preds = torch.from_numpy(pred2OE(preds.numpy(), signatures_dict, signatures_list, gene2idx))
+  OE_truths = torch.from_numpy(pred2OE(truths.numpy(), signatures_dict, signatures_list, gene2idx))
   print('-'*30)
   metrics, aggregated_metrics = aggregated_eval_row(OE_preds, OE_truths, perts)
   print('OE-row-validation:', aggregated_metrics)
@@ -128,11 +148,16 @@ for seed in SEED:
   elif args.method == 'scgpt':
     pert_emb = getPertEmb(perts, reduced_scGPT) #torch.from_numpy(np.stack([reduced_scGPT[pt.split('+')[0]] for pt in perts])).to(torch.float)
   if args.method in ['genept', 'scgpt']:
-    pert = pert_emb #torch.nn.functional.normalize(pert_emb, dim=1) #torch.cat([pert_emb, torch.ones(pert_emb.shape[0], 1)], dim=-1)
+    pert = torch.nn.functional.normalize(pert_emb, dim=1) #torch.cat([pert_emb, torch.ones(pert_emb.shape[0], 1)], dim=-1)
     preds = pert @ W
   if args.method == 'coexpress':
     PG = pert2idx(gene2idx, perts, Y.shape[-1]) @ G
     preds = (PG @ W) @ G.t() + b 
+  if args.method == 'non-ctrl-mean':
+    preds = b.repeat(truths.shape[0], 1)
+  if args.method in ['mean-shift','std-shift']:
+    preds = np.repeat(p,truths.shape[0],axis=0)
+  best_pred_val = preds.detach().numpy()
   best_pred_test = preds.detach().numpy() 
   metrics, aggregated_metrics = aggregated_eval_row(preds, truths, perts)
   print('row-testing:', aggregated_metrics)
@@ -144,8 +169,8 @@ for seed in SEED:
     fname = 'predictions/'+pert_data.dataset_name+'_'+args.method+'_seed='+str(seed)+'_decay='+str(decay)+'.npz'
   np.savez(fname, best_pearson_val=best_pearson_val, best_pred_val=best_pred_val, best_pred_test=best_pred_test, val_perturbs=val_perturbs, test_perturbs=test_perturbs)
 
-  OE_preds = torch.from_numpy(pred2OE(preds.numpy(), OE_signatures, column_names, gene2idx))
-  OE_truths = torch.from_numpy(pred2OE(truths.numpy(), OE_signatures, column_names, gene2idx))
+  OE_preds = torch.from_numpy(pred2OE(preds.numpy(), signatures_dict, signatures_list, gene2idx))
+  OE_truths = torch.from_numpy(pred2OE(truths.numpy(), signatures_dict, signatures_list, gene2idx))
   print('-'*30)
   metrics, aggregated_metrics = aggregated_eval_row(OE_preds, OE_truths, perts)
   print('OE-row-testing:', aggregated_metrics)

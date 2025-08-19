@@ -19,7 +19,7 @@ from utils import get_DE_genes, get_dropout_non_zero_genes, DataSplitter,\
 
 
 class PertData_Essential_v2:
-    def __init__(self, data_path= '/oak/stanford/groups/ljerby/dzhu/Data',
+    def __init__(self, data_path= './data',
                  gene_set_path=None, 
                  default_pert_graph=True):
         """
@@ -209,13 +209,8 @@ class PertData_Essential_v2:
             print_sys("Done!")
 
 
-
-
-
-
-
 class PertData_Essential:
-    def __init__(self, data_path= '/oak/stanford/groups/ljerby/dzhu/Data',
+    def __init__(self, data_path= './data',
                  gene_set_path=None, 
                  default_pert_graph=True):
         """
@@ -387,6 +382,7 @@ class PertData_Essential:
                       validation_in_train_fraction = 0.1):
 
         self.seed = seed
+        self.train_gene_set_size = train_gene_set_size
         set_all_seeds(self.seed)
         len_perts = len(self.in_go_pert)
         rand_ids = np.random.permutation(len_perts) 
@@ -586,7 +582,7 @@ class PertData_Essential:
 
 
 
-class PertData:
+class PertData_GEARS:
     """
     Class for loading and processing perturbation data
 
@@ -623,7 +619,7 @@ class PertData:
 
     """
     
-    def __init__(self, data_path='/oak/stanford/groups/ljerby/dzhu/Code/notebook-scGPT/data', 
+    def __init__(self, data_path='./data', 
                  gene_set_path=None, 
                  default_pert_graph=True):
         """
@@ -719,8 +715,8 @@ class PertData:
         """
         
         if data_name in ['norman', 'adamson', 'dixit', 
-                         'replogle_k562_essential', 
-                         'replogle_rpe1_essential']:
+                         'replogle_k562_essential', 'curated_k562', 
+                         'replogle_rpe1_essential', 'curated_rpe1']:
             ## load from harvard dataverse
             if data_name == 'norman':
                 url = 'https://dataverse.harvard.edu/api/access/datafile/6154020'
@@ -728,14 +724,19 @@ class PertData:
                 url = 'https://dataverse.harvard.edu/api/access/datafile/6154417'
             elif data_name == 'dixit':
                 url = 'https://dataverse.harvard.edu/api/access/datafile/6154416'
-            elif data_name == 'replogle_k562_essential':
+            elif data_name in ['replogle_k562_essential', 'curated_k562']:
                 ## Note: This is not the complete dataset and has been filtered
                 url = 'https://dataverse.harvard.edu/api/access/datafile/7458695'
-            elif data_name == 'replogle_rpe1_essential':
+            elif data_name == ['replogle_rpe1_essential', 'curated_rpe1']:
                 ## Note: This is not the complete dataset and has been filtered
                 url = 'https://dataverse.harvard.edu/api/access/datafile/7458694'
             data_path = os.path.join(self.data_path, data_name)
             zip_data_download_wrapper(url, data_path, self.data_path)
+            if data_name in ['curated_k562', 'curated_rpe1']: 
+                # the version from GEARS paper is called as 'curated' version in our GARM paper.
+                deprecated_path = data_path.replace('curated','replogle')+'_essential'
+                if os.path.exists(deprecated_path):
+                    os.rename(deprecated_path, data_path)
             self.dataset_name = data_path.split('/')[-1]
             self.dataset_path = data_path
             adata_path = os.path.join(data_path, 'perturb_processed.h5ad')
