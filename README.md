@@ -1,5 +1,6 @@
-# GAR-M
-Predict Perturb-Seq with GAR-M (Gradient Aligned Regression with Multihead)
+# GARM
+Official implementation for GARM method from the paper: **Pairwise Regression Enhances the Learning of Genetic Perturbation Transcriptional Effects for Experimental Design**.
+
 <p align="center">
   <img src="figures/GAR-MPH.jpg" width="800" title="Sine">
 </p>
