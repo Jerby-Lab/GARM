@@ -17,7 +17,7 @@ conda activate GARM
 ```
 Download the ancillary files, such as, GO (Gene Ontology), scGPT, GenePT based gene-feature, the cross-dataset in pseudo-bulk leve, gene signature files, etc. from [dataverse](https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi%3A10.7910%2FDVN%2FVRH0Y9&version=DRAFT). Unzip data.zip under the GARM code folder.
 
-**[Optional]** For within-dataset experiment, if you want to run on the original HepG2, Jurkat, K562 and RPE1 datasets, please download the 'xxx_raw_singlecell_01.h5ad' files from their original paper to the data folder (under './data/xxx_essential_sc').
+**[Optional]** For within-dataset experiment, if you want to run on the original HepG2, Jurkat, K562 and RPE1 datasets, please download the 'xxx_raw_singlecell_01.h5ad' files from their original paper to the data folder (under 'GARM/data/xxx_essential_sc').
 
 ## Usage:
 Run GARM on within-dataset Prediction on Unseen Single-Gene Perturbation Transcriptional Responses (on 'Curated K562' dataset).
