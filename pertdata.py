@@ -285,7 +285,7 @@ class PertData_Essential:
         self.pert_names = np.unique(list(gene2go.keys()))
         self.node_map_pert = {x: it for it, x in enumerate(self.pert_names)}
             
-    def load(self, data_name = 'jurkat', avg_sc=True, subset=False):
+    def load(self, data_name = 'jurkat', avg_sc=True):
         """
         Load existing dataloader
         Use data_name for loading 'norman', 'adamson', 'dixit' datasets
@@ -312,25 +312,7 @@ class PertData_Essential:
             self.adata.X = self.adata.X/self.adata.X.sum(axis=-1,keepdims=True)
             self.adata.X = self.adata.X*1e5
             self.adata.X = np.log2(self.adata.X+1)
-            if subset:
-                ctrl_adata = self.adata[self.adata.obs['gene'] == 'non-targeting']
-                ctrl_expressed = ctrl_adata.X > 0
-                ctrl_expressed_ct = ctrl_expressed.sum(axis=0)
-                ctrl_N = ctrl_adata.X.shape[0]
-                ctrl_expressed_ratio = ctrl_expressed_ct/ctrl_N 
-                selected_gene_ids = np.where(ctrl_expressed_ratio > 0.2)[0]
-                print(self.adata)
-                print('subset:',selected_gene_ids.shape[0], 'over', self.adata.X.shape[1])
-                aggregated_tpm=[]
-                for ptb in np.unique(self.adata.obs['gene']):
-                    aggregated_tpm.append(self.adata.X[self.adata.obs['gene'] == ptb].mean(axis=0, keepdims=True))
-                aggregated_tpm=np.concatenate(aggregated_tpm, axis=0)
-                aggregated_gene_std_tpm=aggregated_tpm.std(axis=0)
-                ids_tpm = np.argsort(aggregated_gene_std_tpm)
-                selected_var_gene_ids = ids_tpm[-int(0.8*self.adata.X.shape[1]):]
-                selected_gene_ids = np.intersect1d(selected_gene_ids, selected_var_gene_ids)
-                print('subset:',selected_gene_ids.shape[0], 'over', self.adata.X.shape[1])
-                self.adata = self.adata[:,selected_gene_ids]
+
         
         self.ctrl_adata = self.adata[self.adata.obs['gene'] == 'non-targeting']
         self.ctrl_mean = self.ctrl_adata.X.mean(axis=0, keepdims=True)
@@ -350,8 +332,6 @@ class PertData_Essential:
         if not os.path.exists(pyg_path):
             os.mkdir(pyg_path)
         dataset_fname = os.path.join(pyg_path, data_name+'_graphs.pkl')
-        if subset:
-            dataset_fname = dataset_fname.replace('_graphs.pkl', '_subset_graphs.pkl')
         if self.avg_sc:
             dataset_fname = dataset_fname.replace('_graphs.pkl', '_avg_sc_graphs.pkl')
 
