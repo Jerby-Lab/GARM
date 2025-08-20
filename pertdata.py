@@ -98,7 +98,7 @@ class PertData_Essential_v2:
             
     def load(self):
         # load the Pert x Gene data for Jurkat, Hepg2, K562 and RPE1, where only overlapped genes are included.
-        data_path = os.path.join(self.data_path, 'shared_essential_graphs.pkl')
+        data_path = os.path.join(self.data_path, 'nadig_replogle_shared_essential_graphs.pkl')
         self.dataset_processed = pickle.load(open(data_path,'rb'))
         self.condition_names = []
         for name in self.dataset_processed.keys():
@@ -113,7 +113,8 @@ class PertData_Essential_v2:
         
         self.in_go_pert = [x for x in self.condition_names if x in self.pert_names]
         # load the gene names for the overlapped genes
-        self.gene_names = np.load('/oak/stanford/groups/ljerby/dzhu/Data/weissman_shared_genes.npy', allow_pickle=True)
+        gene_names_path = os.path.join(self.data_path, 'nadig_replogle_shared_genes.npy')
+        self.gene_names = np.load(gene_names_path, allow_pickle=True)
         self.node_map = {x: it for it, x in enumerate(self.gene_names)}
 
         print_sys("Done!")
