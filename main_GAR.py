@@ -17,7 +17,7 @@ parser.add_argument('--layers', default=1, type=int, help='layers of hidden neur
 parser.add_argument('--K', default=128, type=int, help='number of princeple componentse')
 parser.add_argument('--verbose', default='True', type=str, help='whether to calculate and print all evals')
 parser.add_argument('--iteration', default=10, type=int, help='number of inner loop iterations')
-parser.add_argument('--epochs', default=30, type=int, help='number of outer loop iterations')
+parser.add_argument('--epochs', default=300, type=int, help='number of outer loop iterations')
 
 args = parser.parse_args()
 SEED = [1,2,3,4,5]
@@ -74,89 +74,89 @@ for seed in SEED:
   for epoch in range(epochs):
     best_flag = False
     loss_value = 0
-    for idx in range(args.iteration):
-        y_all, pert_all = truths, train_perts
-        N = y_all.shape[0]
-        rand_ids = np.random.permutation(N)
-        for i in range(0, N, batch_size):
-          start = i
-          end = i+batch_size
-          if end >= N:
-            end = N
-          ids = rand_ids[start:end]
-          y, pert = y_all[ids], pert_all[ids]
-          pert_go = getPertEmb(pert, reduced_gene2feat) 
-          pert_genept  = getPertEmb(pert, reduced_GenePT)
-          pert = torch.cat([pert_go, pert_genept], dim=-1)
-          pred_Y = model(pert_genept, pert_go)
-          loss = (criterion1(pred_Y, y)+criterion2(pred_Y, y))/2
-          optimizer.zero_grad()
-          loss.backward()
-          nn.utils.clip_grad_value_(model.parameters(), clip_value=1.0)
-          optimizer.step()
-          loss_value += loss.item()
-    print('Epoch=%s, MSE=%.4f, lr=%.4f'%(epoch, loss_value/(idx+1), scheduler.get_last_lr()[0]))
-    if args.verbose in ['True', 'true']:
-      y, pert = truths, train_perturbs
+    y_all, pert_all = truths, train_perts
+    N = y_all.shape[0]
+    rand_ids = np.random.permutation(N)
+    for i in range(0, N, batch_size):
+      start = i
+      end = i+batch_size
+      if end >= N:
+        end = N
+      ids = rand_ids[start:end]
+      y, pert = y_all[ids], pert_all[ids]
+      pert_go = getPertEmb(pert, reduced_gene2feat) 
+      pert_genept  = getPertEmb(pert, reduced_GenePT)
+      pert = torch.cat([pert_go, pert_genept], dim=-1)
+      pred_Y = model(pert_genept, pert_go)
+      loss = (criterion1(pred_Y, y)+criterion2(pred_Y, y))/2
+      optimizer.zero_grad()
+      loss.backward()
+      nn.utils.clip_grad_value_(model.parameters(), clip_value=1.0)
+      optimizer.step()
+      loss_value += loss.item()
+    print('Epoch=%s, MSE=%.4f, lr=%.4f'%(epoch, loss_value, scheduler.get_last_lr()[0]))
+    if (epoch+1) % 10 == 0:
+      if args.verbose in ['True', 'true']:
+        y, pert = truths, train_perturbs
+        pert_go, pert_genept = getPertEmb(pert, reduced_gene2feat), getPertEmb(pert, reduced_GenePT)
+        preds = model(pert_genept, pert_go)
+        metrics, aggregated_metrics = aggregated_eval_row(preds, y, pert)
+        print('row-train:', aggregated_metrics)
+        metrics, aggregated_metrics = aggregated_eval_col(preds, y)
+        print('col-train:', aggregated_metrics)
+          
+        OE_preds = torch.from_numpy(pred2OE(preds.detach().numpy(), signatures_dict, signatures_list, gene2idx))
+        OE_truths = torch.from_numpy(pred2OE(y.numpy(), signatures_dict, signatures_list, gene2idx))
+        print('-'*30)
+        metrics, aggregated_metrics = aggregated_eval_row(OE_preds, OE_truths, pert)
+        print('OE-row-train:', aggregated_metrics)
+        metrics, aggregated_metrics = aggregated_eval_col(OE_preds, OE_truths)
+        print('OE-col-train:', aggregated_metrics)
+        print('-'*30)
+      
+        y, pert = val_Y-ctrl, val_perturbs
+        pert_go, pert_genept = getPertEmb(pert, reduced_gene2feat), getPertEmb(pert, reduced_GenePT)
+        preds = model(pert_genept, pert_go)
+        metrics, aggregated_metrics = aggregated_eval_row(preds, y, pert)
+        print('row-validation:', aggregated_metrics)
+        metrics, aggregated_metrics = aggregated_eval_col(preds, y)
+        print('col-validation:', aggregated_metrics)
+        if aggregated_metrics['pearson'] > best_pearson_val:
+            best_pearson_val = aggregated_metrics['pearson']
+            best_pred_val = preds.detach().numpy()
+            best_flag = True
+  
+        OE_preds = torch.from_numpy(pred2OE(preds.detach().numpy(), signatures_dict, signatures_list, gene2idx))
+        OE_truths = torch.from_numpy(pred2OE(y.numpy(), signatures_dict, signatures_list, gene2idx))
+        print('-'*30)
+        metrics, aggregated_metrics = aggregated_eval_row(OE_preds, OE_truths, pert)
+        print('OE-row-validation:', aggregated_metrics)
+        metrics, aggregated_metrics = aggregated_eval_col(OE_preds, OE_truths)
+        print('OE-col-validation:', aggregated_metrics)
+        print('-'*30)
+  
+      y, pert = test_Y-ctrl, test_perturbs
       pert_go, pert_genept = getPertEmb(pert, reduced_gene2feat), getPertEmb(pert, reduced_GenePT)
       preds = model(pert_genept, pert_go)
       metrics, aggregated_metrics = aggregated_eval_row(preds, y, pert)
-      print('row-train:', aggregated_metrics)
+      print('row-testing:', aggregated_metrics)
       metrics, aggregated_metrics = aggregated_eval_col(preds, y)
-      print('col-train:', aggregated_metrics)
-        
-      OE_preds = torch.from_numpy(pred2OE(preds.detach().numpy(), signatures_dict, signatures_list, gene2idx))
-      OE_truths = torch.from_numpy(pred2OE(y.numpy(), signatures_dict, signatures_list, gene2idx))
-      print('-'*30)
-      metrics, aggregated_metrics = aggregated_eval_row(OE_preds, OE_truths, pert)
-      print('OE-row-train:', aggregated_metrics)
-      metrics, aggregated_metrics = aggregated_eval_col(OE_preds, OE_truths)
-      print('OE-col-train:', aggregated_metrics)
-      print('-'*30)
-    
-      y, pert = val_Y-ctrl, val_perturbs
-      pert_go, pert_genept = getPertEmb(pert, reduced_gene2feat), getPertEmb(pert, reduced_GenePT)
-      preds = model(pert_genept, pert_go)
-      metrics, aggregated_metrics = aggregated_eval_row(preds, y, pert)
-      print('row-validation:', aggregated_metrics)
-      metrics, aggregated_metrics = aggregated_eval_col(preds, y)
-      print('col-validation:', aggregated_metrics)
-      if aggregated_metrics['pearson'] > best_pearson_val:
-          best_pearson_val = aggregated_metrics['pearson']
-          best_pred_val = preds.detach().numpy()
-          best_flag = True
-
-      OE_preds = torch.from_numpy(pred2OE(preds.detach().numpy(), signatures_dict, signatures_list, gene2idx))
-      OE_truths = torch.from_numpy(pred2OE(y.numpy(), signatures_dict, signatures_list, gene2idx))
-      print('-'*30)
-      metrics, aggregated_metrics = aggregated_eval_row(OE_preds, OE_truths, pert)
-      print('OE-row-validation:', aggregated_metrics)
-      metrics, aggregated_metrics = aggregated_eval_col(OE_preds, OE_truths)
-      print('OE-col-validation:', aggregated_metrics)
-      print('-'*30)
-
-    y, pert = test_Y-ctrl, test_perturbs
-    pert_go, pert_genept = getPertEmb(pert, reduced_gene2feat), getPertEmb(pert, reduced_GenePT)
-    preds = model(pert_genept, pert_go)
-    metrics, aggregated_metrics = aggregated_eval_row(preds, y, pert)
-    print('row-testing:', aggregated_metrics)
-    metrics, aggregated_metrics = aggregated_eval_col(preds, y)
-    print('col-testing:', aggregated_metrics)
-    if best_flag:
-        best_pred_test = preds.detach().numpy()
-        fname = 'predictions/'+pert_data.dataset_name+'_GAR_seed='+str(seed)+'_alpha='+str(args.alpha)+'_lr='+str(lr)+'_decay='+str(decay)+'_K='+str(args.K)+'_BS='+str(args.batch_size)+'.npz'
-        np.savez(fname, epoch=epoch, best_pearson_val=best_pearson_val, best_pred_val=best_pred_val, best_pred_test=best_pred_test, val_perturbs=val_perturbs, test_perturbs=test_perturbs)
-
-    if args.verbose in ['True','true']:
-      OE_preds = torch.from_numpy(pred2OE(preds.detach().numpy(), signatures_dict, signatures_list, gene2idx))
-      OE_truths = torch.from_numpy(pred2OE(y.numpy(), signatures_dict, signatures_list, gene2idx))
-      print('-'*30)
-      metrics, aggregated_metrics = aggregated_eval_row(OE_preds, OE_truths, pert)
-      print('OE-row-testing:', aggregated_metrics)
-      metrics, aggregated_metrics = aggregated_eval_col(OE_preds, OE_truths)
-      print('OE-col-testing:', aggregated_metrics)
-      print('-'*30)
-            
-        
+      print('col-testing:', aggregated_metrics)
+      if best_flag:
+          best_pred_test = preds.detach().numpy()
+          fname = 'predictions/'+pert_data.dataset_name+'_GAR_seed='+str(seed)+'_alpha='+str(args.alpha)+'_lr='+str(lr)+'_decay='+str(decay)+'_K='+str(args.K)+'_BS='+str(args.batch_size)+'.npz'
+          np.savez(fname, epoch=epoch, best_pearson_val=best_pearson_val, best_pred_val=best_pred_val, best_pred_test=best_pred_test, val_perturbs=val_perturbs, test_perturbs=test_perturbs)
+  
+      if args.verbose in ['True','true']:
+        OE_preds = torch.from_numpy(pred2OE(preds.detach().numpy(), signatures_dict, signatures_list, gene2idx))
+        OE_truths = torch.from_numpy(pred2OE(y.numpy(), signatures_dict, signatures_list, gene2idx))
+        print('-'*30)
+        metrics, aggregated_metrics = aggregated_eval_row(OE_preds, OE_truths, pert)
+        print('OE-row-testing:', aggregated_metrics)
+        metrics, aggregated_metrics = aggregated_eval_col(OE_preds, OE_truths)
+        print('OE-col-testing:', aggregated_metrics)
+        print('-'*30)
+              
+          
     scheduler.step()
          
