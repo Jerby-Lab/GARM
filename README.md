@@ -15,6 +15,7 @@ Install the anaconda environment for dependencies of the code (with your conda o
 conda env create -f environment.yml
 conda activate GARM
 ```
+Download the ancillary files, such as, GO (Gene Ontology), scGPT, GenePT based gene-feature, gene signatures, etc. from [dataverse](https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi%3A10.7910%2FDVN%2FVRH0Y9&version=DRAFT). Unzip data.zip under the GARM code folder.
 
 ## Usage:
 Run GARM on within-dataset Prediction on Unseen Single-Gene Perturbation Transcriptional Responses (on 'Curated K562' dataset).
