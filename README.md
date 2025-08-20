@@ -30,7 +30,7 @@ Run GARM on Cross-Dataset Prediction on Single-Gene Perturbation Transcriptional
 python3 main_GARM_cross.py --lr=1e-3 --decay=1e-6 --K=1024 --layers=2 --batch_size=16 
 ```
 
-Please explore linear.py, main_sc.py, main_GAR.py for running other compared methods.
+Please explore linear.py, linear_cross.py, main_sc.py, main_GAR.py for running other compared methods.
 ## Citation:
 If you find GARM useful in your work, please cite the following [placeholder](https://arxiv.org/abs/2402.06104):
 ```
