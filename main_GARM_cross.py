@@ -15,7 +15,7 @@ parser.add_argument('--batch_size', default=16, type=int, help='training batch s
 parser.add_argument('--layers', default=2, type=int, help='number of layers for FFNN')
 parser.add_argument('--K', default=1024, type=int, help='number of neurons in hidden layers')
 parser.add_argument('--verbose', default='True', type=str, help='whether to calculate and print all evals and store out predictions')
-parser.add_argument('--epochs', default=30, type=int, help='number of data-pass for training')
+parser.add_argument('--epochs', default=300, type=int, help='number of data-pass for training')
 
 args = parser.parse_args()
 test_set = ['jurkat', 'hepg2', 'k562', 'rpe1']
