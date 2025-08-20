@@ -8,7 +8,7 @@ Official implementation for GARM method from the paper: **Pairwise Regression En
 ## Quick Start:
 Clone the github to your developement space.
 ```bash
-git clone git@github.com:DixianZhu/GAR-M.git
+git clone git@github.com:DixianZhu/GARM.git
 ```
 Install the anaconda environment for dependencies of the code (with your conda on). This step can be skipped if you already have an environment with necessary packages such as torch, torch_geometric, scanpy, etc. Then, activate the working environment.
 ```bash
@@ -27,3 +27,15 @@ Run GARM on Cross-Dataset Prediction on Single-Gene Perturbation Transcriptional
 python3 main_GARM_cross.py --lr=1e-3 --decay=1e-6 --K=1024 --layers=2 --batch_size=16 
 ```
 
+## Citation:
+If you find GARM useful in your work, please cite the following [placeholder](https://arxiv.org/abs/2402.06104):
+```
+@misc{Placeholder,
+      title={Placeholder}, 
+      author={Dixian Zhu and Livnat Jerby},
+      year={2025},
+}
+```
+
+## Contact:
+For any inquiries on this repository please feel free to post these under "issues" or reach out to Dixian Zhu (dixian-zhu@stanford.edu) and Livnat Jerby (ljerby@stanford.edu).
