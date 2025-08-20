@@ -15,7 +15,7 @@ Install the anaconda environment for dependencies of the code (with your conda o
 conda env create -f environment.yml
 conda activate GARM
 ```
-Download the ancillary files, such as, GO (Gene Ontology), scGPT, GenePT based gene-feature, the cross-dataset in pseudo-bulk leve, gene signature files, etc. from [dataverse](https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi%3A10.7910%2FDVN%2FVRH0Y9&version=DRAFT). Unzip data.zip under the GARM code folder.
+Download the ancillary files, such as, GO (Gene Ontology), scGPT, GenePT based gene-feature, the cross-dataset in pseudo-bulk leve, gene signature files, etc. from [figshare](https://doi.org/10.6084/m9.figshare.29947694.v1). Unzip data.zip under the GARM code folder.
 
 **[Optional]** For within-dataset experiment, if you want to run on the original HepG2, Jurkat, K562 and RPE1 datasets, please download the 'xxx_raw_singlecell_01.h5ad' files from their original paper to the data folder (under 'GARM/data/xxx_essential_sc/').
 
