@@ -168,7 +168,7 @@ class Perturb_NN_GARM(torch.nn.Module):
 
 
 
-class Perturb_NN_GARM_tmp(torch.nn.Module):
+class Perturb_NN_GAR(torch.nn.Module):
     def __init__(self, D, hidden_sizes=(), D_pert=3072, K=256, activation='relu'):
         super().__init__()
         self.G = torch.nn.Parameter(torch.randn(K, D))
@@ -639,13 +639,13 @@ class GEARS_Model(torch.nn.Module):
             cross_gene_embed = self.cross_gene_state(out.reshape(num_graphs, self.num_genes, -1).squeeze(2))
             cross_gene_embed = cross_gene_embed.repeat(1, self.num_genes)
 
-            cross_gene_embed = cross_gene_embed.reshape([num_graphs,self.num_genes, -1])
+            cross_gene_embed = cross_gene_embed.reshape([num_graphs, self.num_genes, -1])
             cross_gene_out = torch.cat([out, cross_gene_embed], 2)
 
             cross_gene_out = cross_gene_out * self.indv_w2
             cross_gene_out = torch.sum(cross_gene_out, axis=2)
             out = cross_gene_out + self.indv_b2        
-            out = out.reshape(num_graphs * self.num_genes, -1) + x.reshape(-1,1).to(out.device)
+            out = out.reshape(num_graphs * self.num_genes, -1) + x.view(-1,1).to(out.device)
             out = torch.split(torch.flatten(out), self.num_genes)
 
             ## uncertainty head

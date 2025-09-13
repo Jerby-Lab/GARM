@@ -70,7 +70,7 @@ class GEARS:
         self.split = pert_data.split
         self.seed = pert_data.seed
         self.train_gene_set_size = pert_data.train_gene_set_size
-        self.gene_list = pert_data.gene_names.values.tolist()
+        self.gene_list = pert_data.gene_names.tolist()
         self.pert_list = pert_data.pert_names.tolist()
         self.num_genes = len(self.gene_list)
         self.num_perts = len(self.pert_list)

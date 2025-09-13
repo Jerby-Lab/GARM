@@ -10,16 +10,19 @@ import os
 
 parser = argparse.ArgumentParser(description = 'Perturb-Seq experiments')
 parser.add_argument('--dataset', default='curated_k562', type=str, help='the name for the dataset to use')
-parser.add_argument('--method', default='GARM', type=str, help='method to use')
+parser.add_argument('--method', default='GEARS', type=str, help='method to use')
 parser.add_argument('--lr', default=1e-3, type=float, help='initial learning rate')
-parser.add_argument('--decay', default=5e-4, type=float, help='weight decay for training the model')
+parser.add_argument('--decay', default=1e-6, type=float, help='weight decay for training the model')
 parser.add_argument('--hidden_size', default=128, type=int, help='GNN hidden size')
+parser.add_argument('--batch_size', default=32, type=int, help='batch size')
+parser.add_argument('--device', default='0', type=str, help='visible GPU')
 
 args = parser.parse_args()
 SEED = [1,2,3,4,5]
 lr = args.lr
 decay = args.decay
 epochs = 10
+os.environ["CUDA_VISIBLE_DEVICES"] = args.device
 if args.dataset in ['curated_k562', 'curated_rpe1']:
     # curated version of the data from GEARS paper
     pert_data = PertData_GEARS()
@@ -36,7 +39,7 @@ signatures_list = np.load('data/signatures_list.npy')
 for seed in SEED:
   set_all_seeds(seed)
   pert_data.prepare_split(split = 'simulation', seed = seed)
-  pert_data.get_dataloader(batch_size = 32, test_batch_size = 128)
+  pert_data.get_dataloader(batch_size = args.batch_size, test_batch_size = 4*args.batch_size)
   print('+'*20+str(seed)+'+'*20)
   val_Y, val_V, val_perturbs = get_aggregated_data(pert_data,split='val')
   test_Y, test_V, test_perturbs = get_aggregated_data(pert_data,split='test')
@@ -125,7 +128,7 @@ for seed in SEED:
     print('col-testing:', aggregated_metrics)
     if best_flag:
         best_pred_test = preds
-        fname = 'predictions/'+pert_data.dataset_name+'_SC09_'+args.method+'_seed='+str(seed)+'_lr='+str(lr)+'_decay='+str(decay)+'_hidden='+str(args.hidden_size)+'.npz'
+        fname = 'predictions/'+pert_data.dataset_name+'_SC_'+args.method+'_seed='+str(seed)+'_lr='+str(lr)+'_decay='+str(decay)+'_hidden='+str(args.hidden_size)+'.npz'
         np.savez(fname, epoch=epoch, best_pearson_val=best_pearson_val, best_pred_val=best_pred_val, best_pred_test=best_pred_test, val_perturbs=val_perturbs, test_perturbs=test_perturbs)
     
     OE_preds = torch.from_numpy(pred2OE(preds.numpy(), signatures_dict, signatures_list, gene2idx))

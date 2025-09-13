@@ -308,8 +308,6 @@ class PertData_Essential:
             self.dataset_path = data_path
             adata_path = os.path.join(data_path, data_name+'_essential_raw_singlecell.h5ad')
             self.adata = sc.read_h5ad(adata_path)
-            lengths = np.array(self.adata.var['length'])
-            self.adata.X = (self.adata.X / lengths)
             self.adata.X = self.adata.X/self.adata.X.sum(axis=-1,keepdims=True)
             self.adata.X = self.adata.X*1e5
             self.adata.X = np.log2(self.adata.X+1)
@@ -355,10 +353,10 @@ class PertData_Essential:
             for i in range(len(self.dataset_processed[p])):
                 train_Y.append(self.dataset_processed[p][i].y)
         self.train_Y = torch.cat(train_Y, dim=0)
-        
-
+               
+    
     def prepare_split(self, split = 'simulation', 
-                      seed = 1, 
+                      seed = 1, shift = 0, 
                       train_gene_set_size = 0.75,
                       validation_in_train_fraction = 0.1):
 
@@ -371,6 +369,12 @@ class PertData_Essential:
         te_N = len_perts - tr_N
         va_N = int(validation_in_train_fraction*tr_N)
         tr_N = tr_N - va_N
+        if shift > 0 and shift < 1/(1-train_gene_set_size):
+            shift_N = shift*te_N
+            remain_N = len_perts - shift_N
+            tmp = rand_ids[-shift_N:].copy()
+            rand_ids[-remain_N:] = rand_ids[:remain_N].copy()
+            rand_ids[:shift_N] = tmp
         split_ids = {}
         split_ids['train'] = rand_ids[:tr_N]
         split_ids['val'] = rand_ids[tr_N:(tr_N+va_N)]
@@ -708,7 +712,7 @@ class PertData_GEARS:
             elif data_name in ['replogle_k562_essential', 'curated_k562']:
                 ## Note: This is not the complete dataset and has been filtered
                 url = 'https://dataverse.harvard.edu/api/access/datafile/7458695'
-            elif data_name == ['replogle_rpe1_essential', 'curated_rpe1']:
+            elif data_name in ['replogle_rpe1_essential', 'curated_rpe1']:
                 ## Note: This is not the complete dataset and has been filtered
                 url = 'https://dataverse.harvard.edu/api/access/datafile/7458694'
             data_path = os.path.join(self.data_path, data_name)

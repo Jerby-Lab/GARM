@@ -142,7 +142,7 @@ for test_name in test_set:
         print('col-testing:', aggregated_metrics)
         if best_flag:
             best_pred_test = preds.detach().numpy()
-            fname = 'predictions/'+pert_data.dataset_name+'_NNlin099_lr='+str(lr)+'_decay='+str(decay)+'_K='+str(args.K)+'_BS='+str(args.batch_size)+'.npz'
+            fname = 'predictions/'+pert_data.dataset_name+'_GARM_lr='+str(lr)+'_decay='+str(decay)+'_K='+str(args.K)+'_BS='+str(args.batch_size)+'.npz'
             np.savez(fname, epoch=epoch, best_pearson_val=best_pearson_val, best_pred_val=best_pred_val, best_pred_test=best_pred_test, val_perturbs=val_perturbs, test_perturbs=test_perturbs)
 
         if args.verbose in ['True','true']:

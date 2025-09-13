@@ -63,7 +63,7 @@ for seed in SEED:
     ids_no_ctrl = np.setdiff1d(np.arange(train_Y.shape[0]),ctrl_id)
     train_Y, train_perturbs = train_Y[ids_no_ctrl], train_perturbs[ids_no_ctrl]
   truths, train_perts = train_Y-ctrl, train_perturbs
-  model = Perturb_NN_GARM_tmp(D=truths.shape[-1], b=ctrl, hidden_sizes=([args.K]*layers), D_pert=3072, K=args.K)
+  model = Perturb_NN_GAR(D=truths.shape[-1], hidden_sizes=([args.K]*layers), D_pert=3072, K=args.K)
   criterion1 = GAR_col(alpha=args.alpha)
   criterion2 = GAR_row(alpha=args.alpha)
   optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=decay)
