@@ -2,7 +2,7 @@
 Official implementation for GARM method from the paper: **Pairwise Regression Enhances the Learning of Genetic Perturbation Transcriptional Effects for Experimental Design**.
 
 <p align="center">
-  <img src="figures/GARM.jpg" width="800" title="Overview for GARM">
+  <img src="figures/Fig2-GARM.jpeg" width="800" title="Overview for GARM">
 </p>
 
 ## Quick Start:
