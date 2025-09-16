@@ -717,7 +717,7 @@ class PertData_GEARS:
                 url = 'https://dataverse.harvard.edu/api/access/datafile/7458694'
             data_path = os.path.join(self.data_path, data_name)
             zip_data_download_wrapper(url, data_path, self.data_path)
-            if data_name in ['curated_k562', 'curated_rpe1']: 
+            if data_name in ['curated_k562', 'curated_rpe1'] and not os.path.exists(data_path): 
                 # the version from GEARS paper is called as 'curated' version in our GARM paper.
                 deprecated_path = data_path.replace('curated','replogle')+'_essential'
                 if os.path.exists(deprecated_path):
