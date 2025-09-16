@@ -1,5 +1,5 @@
 # GARM
-Official implementation for GARM method from the paper: **Pairwise Regression Enhances the Learning of Genetic Perturbation Transcriptional Effects for Experimental Design**.
+Official implementation for GARM method from the paper: **Generalizable predictive models of genetic perturbation transcriptional effects**.
 
 <p align="center">
   <img src="figures/Fig2-GARM.jpg" width="800" title="Overview for GARM">
