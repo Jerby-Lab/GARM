@@ -1,5 +1,5 @@
 # GARM
-Official implementation for GARM method from the paper: **Generalizable predictive models of genetic perturbation transcriptional effects**.
+Official implementation for GARM method from the paper: **Gradient-aware modeling advances AI-driven prediction of genetic perturbation effects**.
 
 <p align="center">
   <img src="figures/Fig2-GARM.jpg" width="800" title="Overview for GARM">
