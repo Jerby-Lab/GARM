@@ -8,7 +8,7 @@ Official implementation for GARM method from the paper: **Gradient-aware modelin
 ## Quick Start:
 Clone the github to your developement space.
 ```bash
-git clone git@github.com:DixianZhu/GARM.git
+git clone https://github.com/DixianZhu/GARM.git
 ```
 Install the anaconda environment for dependencies of the code (with your conda on). This step can be skipped if you already have an environment with necessary packages such as torch, torch_geometric, scanpy, etc. Then, activate the working environment.
 ```bash
