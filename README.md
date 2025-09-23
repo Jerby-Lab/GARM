@@ -10,7 +10,7 @@ Clone the github to your developement space.
 ```bash
 git clone https://github.com/DixianZhu/GARM.git
 ```
-**[Optional]** Install the anaconda environment for dependencies of the code (with your conda on). This step can be skipped if you already have an environment with necessary packages such as torch, torch_geometric, scanpy, etc. Then, activate the working environment. The following yml file only works in Linux platform. Please install the required packages manually for other platforms.
+**[Optional]** Install the anaconda environment for dependencies of the code (with your conda on). This step can be skipped if you already have an environment with necessary packages such as torch, torch_geometric, scanpy, etc. Then, activate the working environment. The following yml file only works in Linux platform. Please install the required packages manually for the other platforms.
 ```bash
 conda env create -f environment.yml
 conda activate GARM
