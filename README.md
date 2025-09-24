@@ -42,6 +42,13 @@ The analysis code for overall performance comparison with automatic hyper-parame
 
 The synthetic experiments can be found in [synthetic.ipynb](https://github.com/DixianZhu/GARM/blob/master/synthetic.ipynb).
 
+## Evaluation:
+The current code output pointwise, GenR and PrtR evaluations. GARM perferms significantly better on **PrtR**, which is more difficult and closely related to experimental design.
+
+<p align="center">
+  <img src="figures/eval_example.jpeg" width="500" title="Evaluation">
+</p>
+
 ## Citation:
 If you find GARM useful in your work, please cite the following [placeholder](https://arxiv.org/abs/2402.06104):
 ```
