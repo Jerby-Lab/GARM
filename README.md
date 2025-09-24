@@ -10,18 +10,16 @@ Official implementation for GARM method from the paper: **Gradient-aware modelin
 ```bash
 git clone https://github.com/DixianZhu/GARM.git
 ```
-**[Optional]** Install the anaconda environment for dependencies of the code (with your conda on). This step can be skipped if you already have an environment with necessary packages such as torch, torch_geometric, scanpy, etc. 
+**[Optional]** Install the anaconda environment for dependencies of the code (with your conda on). Then, activate the working environment. This step can be skipped if you already have an environment with necessary packages such as torch, torch_geometric, scanpy, etc. 
 ```bash
 conda env create -f environment.yml
+conda activate GARM
 ```
 The yml file only works in Linux platform. For the other platforms, please try the following step or install the required packages manually.
 ```bash
 conda env -n GARM python=3.9.23
-pip3 install -r requirements.txt 
-```
-Then, activate the working environment. 
-```bash
 conda activate GARM
+pip3 install -r requirements.txt 
 ```
 **[Required]** Download the ancillary files, such as, GO (Gene Ontology), scGPT, GenePT based gene-feature, the cross-dataset in pseudo-bulk level, gene signature files, etc. from [figshare](https://doi.org/10.6084/m9.figshare.29947694.v3). Unzip data.zip under the GARM code folder.
 
