@@ -52,7 +52,7 @@ The current code output pointwise, GenR and PrtR evaluations. GARM performs sign
 </p>
 
 ## Citation:
-If you find GARM useful in your work, please cite the following [placeholder](https://arxiv.org/abs/2402.06104):
+If you find GARM useful in your work, please cite the following [placeholder](https://www.biorxiv.org/content/early/2025/10/05/2025.10.03.680360):
 ```
 @article {Zhu2025.10.03.680360,
 	author = {Zhu, Dixian and Jerby, Livnat},
