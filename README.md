@@ -54,11 +54,18 @@ The current code output pointwise, GenR and PrtR evaluations. GARM performs sign
 ## Citation:
 If you find GARM useful in your work, please cite the following [placeholder](https://arxiv.org/abs/2402.06104):
 ```
-@misc{Placeholder,
-      title={Placeholder}, 
-      author={Dixian Zhu and Livnat Jerby},
-      year={2025},
+@article {Zhu2025.10.03.680360,
+	author = {Zhu, Dixian and Jerby, Livnat},
+	title = {Gradient-aware modeling advances AI-driven prediction of genetic perturbation effects},
+	elocation-id = {2025.10.03.680360},
+	year = {2025},
+	doi = {10.1101/2025.10.03.680360},
+	publisher = {Cold Spring Harbor Laboratory},
+	URL = {https://www.biorxiv.org/content/early/2025/10/05/2025.10.03.680360},
+	eprint = {https://www.biorxiv.org/content/early/2025/10/05/2025.10.03.680360.full.pdf},
+	journal = {bioRxiv}
 }
+
 ```
 
 ## Contact:
