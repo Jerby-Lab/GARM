@@ -17,7 +17,7 @@ conda activate GARM
 ```
 The yml file only works in Linux platform. For the other platforms, please try the following step or install the required packages manually.
 ```bash
-conda env -n GARM python=3.9.23
+conda env create -n GARM python=3.9.23
 conda activate GARM
 pip3 install -r requirements.txt 
 ```
